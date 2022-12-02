@@ -1,9 +1,9 @@
 /*****************************************************************************
- * predict.h: ppc intra prediction
+ * deblock.h: ppc deblocking
  *****************************************************************************
- * Copyright (C) 2007-2022 x264 project
+ * Copyright (C) 2017-2022 x264 project
  *
- * Authors: Guillaume Poirier <gpoirier@mplayerhq.hu>
+ * Authors: Anton Mitrofanov <BugMaster@narod.ru>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,12 +23,12 @@
  * For more information, contact us at licensing@x264.com.
  *****************************************************************************/
 
-#ifndef X264_PPC_PREDICT_H
-#define X264_PPC_PREDICT_H
+#ifndef X264_PPC_DEBLOCK_H
+#define X264_PPC_DEBLOCK_H
 
-#define x264_predict_16x16_init_altivec x264_template(predict_16x16_init_altivec)
-void x264_predict_16x16_init_altivec( x264_predict_t pf[7] );
-#define x264_predict_8x8c_init_altivec x264_template(predict_8x8c_init_altivec)
-void x264_predict_8x8c_init_altivec( x264_predict_t pf[7] );
+#define x264_deblock_v_luma_altivec x264_template(deblock_v_luma_altivec)
+void x264_deblock_v_luma_altivec( uint8_t *pix, intptr_t stride, int alpha, int beta, int8_t *tc0 );
+#define x264_deblock_h_luma_altivec x264_template(deblock_h_luma_altivec)
+void x264_deblock_h_luma_altivec( uint8_t *pix, intptr_t stride, int alpha, int beta, int8_t *tc0 );
 
-#endif /* X264_PPC_PREDICT_H */
+#endif

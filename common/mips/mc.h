@@ -1,7 +1,7 @@
 /*****************************************************************************
  * mc.h: msa motion compensation
  *****************************************************************************
- * Copyright (C) 2015-2016 x264 project
+ * Copyright (C) 2015-2022 x264 project
  *
  * Authors: Neha Rana <neha.rana@imgtec.com>
  *
@@ -26,6 +26,7 @@
 #ifndef X264_MIPS_MC_H
 #define X264_MIPS_MC_H
 
-void x264_mc_init_mips( int cpu, x264_mc_functions_t *pf );
+#define x264_mc_init_mips x264_template(mc_init_mips)
+void x264_mc_init_mips( uint32_t cpu, x264_mc_functions_t *pf );
 
 #endif

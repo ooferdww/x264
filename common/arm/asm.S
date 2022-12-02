@@ -1,7 +1,7 @@
 /*****************************************************************************
  * asm.S: arm utility macros
  *****************************************************************************
- * Copyright (C) 2008-2016 x264 project
+ * Copyright (C) 2008-2022 x264 project
  *
  * Authors: Mans Rullgard <mans@mansr.com>
  *          David Conrad <lessen42@gmail.com>
@@ -28,26 +28,44 @@
 
 .syntax unified
 
-#if   HAVE_NEON
-        .arch           armv7-a
-#elif HAVE_ARMV6T2
-        .arch           armv6t2
-#elif HAVE_ARMV6
-        .arch           armv6
+#ifdef __ELF__
+.arch armv7-a
+.fpu neon
 #endif
 
-.fpu neon
+#define GLUE(a, b) a ## b
+#define JOIN(a, b) GLUE(a, b)
 
 #ifdef PREFIX
-#   define EXTERN_ASM _
+#   define BASE _x264_
+#   define SYM_PREFIX _
 #else
-#   define EXTERN_ASM
+#   define BASE x264_
+#   define SYM_PREFIX
 #endif
+
+#ifdef BIT_DEPTH
+#   define EXTERN_ASM JOIN(JOIN(BASE, BIT_DEPTH), _)
+#else
+#   define EXTERN_ASM BASE
+#endif
+
+#define X(s) JOIN(EXTERN_ASM, s)
+#define X264(s) JOIN(BASE, s)
+#define EXT(s) JOIN(SYM_PREFIX, s)
 
 #ifdef __ELF__
 #   define ELF
 #else
 #   define ELF @
+#endif
+
+#ifdef __MACH__
+#   define MACH
+#   define NONMACH @
+#else
+#   define MACH @
+#   define NONMACH
 #endif
 
 #if HAVE_AS_FUNC
@@ -56,7 +74,7 @@
 #   define FUNC @
 #endif
 
-#if SYS_LINUX
+#if SYS_LINUX || SYS_OPENBSD
 #define HAVE_SECTION_DATA_REL_RO 1
 #else
 #define HAVE_SECTION_DATA_REL_RO 0
@@ -72,10 +90,15 @@ ELF     .eabi_attribute 25, \val
 
 .macro function name, export=1
     .macro endfunc
+.if \export
+ELF     .size   EXTERN_ASM\name, . - EXTERN_ASM\name
+.else
 ELF     .size   \name, . - \name
+.endif
 FUNC    .endfunc
         .purgem endfunc
     .endm
+        .text
         .align  2
 .if \export == 1
         .global EXTERN_ASM\name
@@ -99,7 +122,8 @@ ELF     .size   \name, . - \name
 .if HAVE_SECTION_DATA_REL_RO && \relocate
         .section        .data.rel.ro
 .else
-        .section        .rodata
+NONMACH .section        .rodata
+MACH    .const_data
 .endif
         .align          \align
 \name:
@@ -163,10 +187,6 @@ ELF     .size   \name, . - \name
     ldr         \rd, =\val
 #endif
 .endm
-
-#define GLUE(a, b) a ## b
-#define JOIN(a, b) GLUE(a, b)
-#define X(s) JOIN(EXTERN_ASM, s)
 
 #define FENC_STRIDE 16
 #define FDEC_STRIDE 32

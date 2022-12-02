@@ -1,7 +1,7 @@
 ;*****************************************************************************
 ;* cpu-a.asm: x86 cpu utilities
 ;*****************************************************************************
-;* Copyright (C) 2003-2016 x264 project
+;* Copyright (C) 2003-2022 x264 project
 ;*
 ;* Authors: Laurent Aimar <fenrir@via.ecp.fr>
 ;*          Loren Merritt <lorenm@u.washington.edu>
@@ -53,41 +53,32 @@ cglobal cpu_cpuid, 5,7
     RET
 
 ;-----------------------------------------------------------------------------
-; void cpu_xgetbv( int op, int *eax, int *edx )
+; uint64_t cpu_xgetbv( int xcr )
 ;-----------------------------------------------------------------------------
-cglobal cpu_xgetbv, 3,7
-    push  r2
-    push  r1
-    mov  ecx, r0d
+cglobal cpu_xgetbv
+    movifnidn ecx, r0m
     xgetbv
-    pop   r4
-    mov [r4], eax
-    pop   r4
-    mov [r4], edx
-    RET
-
 %if ARCH_X86_64
-
-;-----------------------------------------------------------------------------
-; void stack_align( void (*func)(void*), void *arg );
-;-----------------------------------------------------------------------------
-cglobal stack_align
-    push rbp
-    mov  rbp, rsp
-%if WIN64
-    sub  rsp, 32 ; shadow space
+    shl       rdx, 32
+    or        rax, rdx
 %endif
-    and  rsp, ~31
-    mov  rax, r0
-    mov   r0, r1
-    mov   r1, r2
-    mov   r2, r3
-    call rax
-    leave
     ret
 
-%else
+;-----------------------------------------------------------------------------
+; void cpu_emms( void )
+;-----------------------------------------------------------------------------
+cglobal cpu_emms
+    emms
+    ret
 
+;-----------------------------------------------------------------------------
+; void cpu_sfence( void )
+;-----------------------------------------------------------------------------
+cglobal cpu_sfence
+    sfence
+    ret
+
+%if ARCH_X86_64 == 0
 ;-----------------------------------------------------------------------------
 ; int cpu_cpuid_test( void )
 ; return 0 if unsupported
@@ -113,35 +104,4 @@ cglobal cpu_cpuid_test
     pop     ebx
     popfd
     ret
-
-cglobal stack_align
-    push ebp
-    mov  ebp, esp
-    sub  esp, 12
-    and  esp, ~31
-    mov  ecx, [ebp+8]
-    mov  edx, [ebp+12]
-    mov  [esp], edx
-    mov  edx, [ebp+16]
-    mov  [esp+4], edx
-    mov  edx, [ebp+20]
-    mov  [esp+8], edx
-    call ecx
-    leave
-    ret
-
 %endif
-
-;-----------------------------------------------------------------------------
-; void cpu_emms( void )
-;-----------------------------------------------------------------------------
-cglobal cpu_emms
-    emms
-    ret
-
-;-----------------------------------------------------------------------------
-; void cpu_sfence( void )
-;-----------------------------------------------------------------------------
-cglobal cpu_sfence
-    sfence
-    ret

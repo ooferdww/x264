@@ -1,7 +1,7 @@
 /*****************************************************************************
  * asm.S: AArch64 utility macros
  *****************************************************************************
- * Copyright (C) 2008-2016 x264 project
+ * Copyright (C) 2008-2022 x264 project
  *
  * Authors: Mans Rullgard <mans@mansr.com>
  *          David Conrad <lessen42@gmail.com>
@@ -27,11 +27,26 @@
 
 #include "config.h"
 
+#define GLUE(a, b) a ## b
+#define JOIN(a, b) GLUE(a, b)
+
 #ifdef PREFIX
-#   define EXTERN_ASM _
+#   define BASE _x264_
+#   define SYM_PREFIX _
 #else
-#   define EXTERN_ASM
+#   define BASE x264_
+#   define SYM_PREFIX
 #endif
+
+#ifdef BIT_DEPTH
+#   define EXTERN_ASM JOIN(JOIN(BASE, BIT_DEPTH), _)
+#else
+#   define EXTERN_ASM BASE
+#endif
+
+#define X(s) JOIN(EXTERN_ASM, s)
+#define X264(s) JOIN(BASE, s)
+#define EXT(s) JOIN(SYM_PREFIX, s)
 
 #ifdef __ELF__
 #   define ELF
@@ -53,7 +68,11 @@
 
 .macro  function name, export=0, align=2
     .macro endfunc
+.if \export
+ELF     .size   EXTERN_ASM\name, . - EXTERN_ASM\name
+.else
 ELF     .size   \name, . - \name
+.endif
 FUNC    .endfunc
         .purgem endfunc
     .endm
@@ -82,21 +101,32 @@ MACH    .const_data
 \name:
 .endm
 
-.macro  movrel rd, val
-#if defined(PIC) && defined(__APPLE__)
+.macro  movrel rd, val, offset=0
+#if defined(__APPLE__)
+  .if \offset < 0
         adrp            \rd, \val@PAGE
         add             \rd, \rd, \val@PAGEOFF
-#elif defined(PIC)
+        sub             \rd, \rd, -(\offset)
+  .else
+        adrp            \rd, \val+(\offset)@PAGE
+        add             \rd, \rd, \val+(\offset)@PAGEOFF
+  .endif
+#elif defined(PIC) && defined(_WIN32)
+  .if \offset < 0
         adrp            \rd, \val
         add             \rd, \rd, :lo12:\val
+        sub             \rd, \rd, -(\offset)
+  .else
+        adrp            \rd, \val+(\offset)
+        add             \rd, \rd, :lo12:\val+(\offset)
+  .endif
+#elif defined(PIC)
+        adrp            \rd, \val+(\offset)
+        add             \rd, \rd, :lo12:\val+(\offset)
 #else
-        ldr             \rd, =\val
+        ldr             \rd, =\val+\offset
 #endif
 .endm
-
-#define GLUE(a, b) a ## b
-#define JOIN(a, b) GLUE(a, b)
-#define X(s) JOIN(EXTERN_ASM, s)
 
 #define FDEC_STRIDE 32
 #define FENC_STRIDE 16

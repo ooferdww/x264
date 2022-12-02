@@ -1,7 +1,7 @@
 ;*****************************************************************************
 ;* x86util.asm: x86 utility macros
 ;*****************************************************************************
-;* Copyright (C) 2008-2016 x264 project
+;* Copyright (C) 2008-2022 x264 project
 ;*
 ;* Authors: Holger Lubitz <holger@lubitz.org>
 ;*          Loren Merritt <lorenm@u.washington.edu>
@@ -23,6 +23,23 @@
 ;* This program is also available under a commercial proprietary license.
 ;* For more information, contact us at licensing@x264.com.
 ;*****************************************************************************
+
+; like cextern, but with a plain x264 prefix instead of a bitdepth-specific one
+%macro cextern_common 1
+    %xdefine %1 mangle(x264 %+ _ %+ %1)
+    CAT_XDEFINE cglobaled_, %1, 1
+    extern %1
+%endmacro
+
+%ifndef BIT_DEPTH
+    %assign BIT_DEPTH 0
+%endif
+
+%if BIT_DEPTH > 8
+    %assign HIGH_BIT_DEPTH 1
+%else
+    %assign HIGH_BIT_DEPTH 0
+%endif
 
 %assign FENC_STRIDE 16
 %assign FDEC_STRIDE 32
@@ -53,7 +70,6 @@
 %endrep
 %endif
 %endmacro
-
 
 %macro SBUTTERFLY 4
 %ifidn %1, dqqq
@@ -270,18 +286,51 @@
 %if cpuflag(avx2) && %3 == 0
     vpbroadcastw %1, %2
 %else
-    PSHUFLW      %1, %2, (%3)*q1111
-%if mmsize == 16
+    %define %%s %2
+%ifid %2
+    %define %%s xmm%2
+%elif %3 == 0
+    movd      xmm%1, %2
+    %define %%s xmm%1
+%endif
+    PSHUFLW   xmm%1, %%s, (%3)*q1111
+%if mmsize >= 32
+    vpbroadcastq %1, xmm%1
+%elif mmsize == 16
     punpcklqdq   %1, %1
 %endif
 %endif
 %endmacro
 
 %imacro SPLATD 2-3 0
-%if mmsize == 16
-    pshufd %1, %2, (%3)*q1111
+%if cpuflag(avx2) && %3 == 0
+    vpbroadcastd %1, %2
 %else
-    pshufw %1, %2, (%3)*q0101 + ((%3)+1)*q1010
+    %define %%s %2
+%ifid %2
+    %define %%s xmm%2
+%elif %3 == 0
+    movd      xmm%1, %2
+    %define %%s xmm%1
+%endif
+%if mmsize == 8 && %3 == 0
+%ifidn %1, %%s
+    punpckldq    %1, %1
+%else
+    pshufw       %1, %%s, q1010
+%endif
+%elif mmsize == 8 && %3 == 1
+%ifidn %1, %%s
+    punpckhdq    %1, %1
+%else
+    pshufw       %1, %%s, q3232
+%endif
+%else
+    pshufd    xmm%1, %%s, (%3)*q1111
+%endif
+%if mmsize >= 32
+    vpbroadcastq %1, xmm%1
+%endif
 %endif
 %endmacro
 
@@ -303,24 +352,24 @@
 %endmacro
 
 %macro HADDD 2 ; sum junk
-%if sizeof%1 == 32
-%define %2 xmm%2
-    vextracti128 %2, %1, 1
-%define %1 xmm%1
-    paddd   %1, %2
+%if sizeof%1 >= 64
+    vextracti32x8 ymm%2, zmm%1, 1
+    paddd         ymm%1, ymm%2
 %endif
-%if mmsize >= 16
-    MOVHL   %2, %1
-    paddd   %1, %2
+%if sizeof%1 >= 32
+    vextracti128  xmm%2, ymm%1, 1
+    paddd         xmm%1, xmm%2
+%endif
+%if sizeof%1 >= 16
+    MOVHL         xmm%2, xmm%1
+    paddd         xmm%1, xmm%2
 %endif
 %if cpuflag(xop) && sizeof%1 == 16
-    vphadddq %1, %1
+    vphadddq      xmm%1, xmm%1
 %else
-    PSHUFLW %2, %1, q0032
-    paddd   %1, %2
+    PSHUFLW       xmm%2, xmm%1, q1032
+    paddd         xmm%1, xmm%2
 %endif
-%undef %1
-%undef %2
 %endmacro
 
 %macro HADDW 2 ; reg, tmp
@@ -568,8 +617,10 @@
     %elif %1==2
         %if mmsize==8
             SBUTTERFLY dq, %3, %4, %5
-        %else
+        %elif %0==6
             TRANS q, ORDER, %3, %4, %5, %6
+        %else
+            TRANS q, ORDER, %3, %4, %5
         %endif
     %elif %1==4
         SBUTTERFLY qdq, %3, %4, %5
@@ -741,25 +792,25 @@
 %if %6 ; %5 aligned?
     mova       %1, %4
     psubw      %1, %5
+%elif cpuflag(avx)
+    movu       %1, %4
+    psubw      %1, %5
 %else
     movu       %1, %4
     movu       %2, %5
     psubw      %1, %2
 %endif
 %else ; !HIGH_BIT_DEPTH
-%ifidn %3, none
     movh       %1, %4
     movh       %2, %5
+%ifidn %3, none
     punpcklbw  %1, %2
     punpcklbw  %2, %2
-    psubw      %1, %2
 %else
-    movh       %1, %4
     punpcklbw  %1, %3
-    movh       %2, %5
     punpcklbw  %2, %3
-    psubw      %1, %2
 %endif
+    psubw      %1, %2
 %endif ; HIGH_BIT_DEPTH
 %endmacro
 
