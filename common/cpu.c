@@ -1,7 +1,7 @@
 /*****************************************************************************
  * cpu.c: cpu detection
  *****************************************************************************
- * Copyright (C) 2003-2016 x264 project
+ * Copyright (C) 2003-2022 x264 project
  *
  * Authors: Loren Merritt <lorenm@u.washington.edu>
  *          Laurent Aimar <fenrir@via.ecp.fr>
@@ -25,32 +25,34 @@
  * For more information, contact us at licensing@x264.com.
  *****************************************************************************/
 
-#define _GNU_SOURCE // for sched_getaffinity
-#include "common.h"
-#include "cpu.h"
+#include "base.h"
 
-#if HAVE_POSIXTHREAD && SYS_LINUX
+#if SYS_CYGWIN || SYS_SunOS || SYS_OPENBSD
+#include <unistd.h>
+#endif
+#if SYS_LINUX
+#ifdef __ANDROID__
+#include <unistd.h>
+#else
 #include <sched.h>
+#endif
 #endif
 #if SYS_BEOS
 #include <kernel/OS.h>
 #endif
-#if SYS_MACOSX || SYS_FREEBSD
+#if SYS_MACOSX || SYS_OPENBSD || SYS_FREEBSD
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #endif
 #if SYS_OPENBSD
-#include <sys/param.h>
-#include <sys/sysctl.h>
 #include <machine/cpu.h>
 #endif
 
 const x264_cpu_name_t x264_cpu_names[] =
 {
-#if HAVE_MMX
+#if ARCH_X86 || ARCH_X86_64
 //  {"MMX",         X264_CPU_MMX},  // we don't support asm on mmx1 cpus anymore
-//  {"CMOV",        X264_CPU_CMOV}, // we require this unconditionally, so don't print it
-#define MMX2 X264_CPU_MMX|X264_CPU_MMX2|X264_CPU_CMOV
+#define MMX2 X264_CPU_MMX|X264_CPU_MMX2
     {"MMX2",        MMX2},
     {"MMXEXT",      MMX2},
     {"SSE",         MMX2|X264_CPU_SSE},
@@ -58,6 +60,7 @@ const x264_cpu_name_t x264_cpu_names[] =
     {"SSE2Slow",    SSE2|X264_CPU_SSE2_IS_SLOW},
     {"SSE2",        SSE2},
     {"SSE2Fast",    SSE2|X264_CPU_SSE2_IS_FAST},
+    {"LZCNT",       SSE2|X264_CPU_LZCNT},
     {"SSE3",        SSE2|X264_CPU_SSE3},
     {"SSSE3",       SSE2|X264_CPU_SSE3|X264_CPU_SSSE3},
     {"SSE4.1",      SSE2|X264_CPU_SSE3|X264_CPU_SSSE3|X264_CPU_SSE4},
@@ -68,16 +71,17 @@ const x264_cpu_name_t x264_cpu_names[] =
     {"XOP",         AVX|X264_CPU_XOP},
     {"FMA4",        AVX|X264_CPU_FMA4},
     {"FMA3",        AVX|X264_CPU_FMA3},
-    {"AVX2",        AVX|X264_CPU_FMA3|X264_CPU_AVX2},
+    {"BMI1",        AVX|X264_CPU_LZCNT|X264_CPU_BMI1},
+    {"BMI2",        AVX|X264_CPU_LZCNT|X264_CPU_BMI1|X264_CPU_BMI2},
+#define AVX2 AVX|X264_CPU_FMA3|X264_CPU_LZCNT|X264_CPU_BMI1|X264_CPU_BMI2|X264_CPU_AVX2
+    {"AVX2",        AVX2},
+    {"AVX512",      AVX2|X264_CPU_AVX512},
+#undef AVX2
 #undef AVX
 #undef SSE2
 #undef MMX2
     {"Cache32",         X264_CPU_CACHELINE_32},
     {"Cache64",         X264_CPU_CACHELINE_64},
-    {"LZCNT",           X264_CPU_LZCNT},
-    {"BMI1",            X264_CPU_BMI1},
-    {"BMI2",            X264_CPU_BMI1|X264_CPU_BMI2},
-    {"SlowCTZ",         X264_CPU_SLOW_CTZ},
     {"SlowAtom",        X264_CPU_SLOW_ATOM},
     {"SlowPshufb",      X264_CPU_SLOW_PSHUFB},
     {"SlowPalignr",     X264_CPU_SLOW_PALIGNR},
@@ -98,7 +102,7 @@ const x264_cpu_name_t x264_cpu_names[] =
     {"", 0},
 };
 
-#if (ARCH_PPC && SYS_LINUX) || (ARCH_ARM && !HAVE_NEON)
+#if (HAVE_ALTIVEC && SYS_LINUX) || (HAVE_ARMV6 && !HAVE_NEON)
 #include <signal.h>
 #include <setjmp.h>
 static sigjmp_buf jmpbuf;
@@ -120,7 +124,7 @@ static void sigill_handler( int sig )
 #if HAVE_MMX
 int x264_cpu_cpuid_test( void );
 void x264_cpu_cpuid( uint32_t op, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx );
-void x264_cpu_xgetbv( uint32_t op, uint32_t *eax, uint32_t *edx );
+uint64_t x264_cpu_xgetbv( int xcr );
 
 uint32_t x264_cpu_detect( void )
 {
@@ -128,15 +132,13 @@ uint32_t x264_cpu_detect( void )
     uint32_t eax, ebx, ecx, edx;
     uint32_t vendor[4] = {0};
     uint32_t max_extended_cap, max_basic_cap;
-    int cache;
 
 #if !ARCH_X86_64
     if( !x264_cpu_cpuid_test() )
         return 0;
 #endif
 
-    x264_cpu_cpuid( 0, &eax, vendor+0, vendor+2, vendor+1 );
-    max_basic_cap = eax;
+    x264_cpu_cpuid( 0, &max_basic_cap, vendor+0, vendor+2, vendor+1 );
     if( max_basic_cap == 0 )
         return 0;
 
@@ -147,49 +149,45 @@ uint32_t x264_cpu_detect( void )
         return cpu;
     if( edx&0x02000000 )
         cpu |= X264_CPU_MMX2|X264_CPU_SSE;
-    if( edx&0x00008000 )
-        cpu |= X264_CPU_CMOV;
-    else
-        return cpu;
     if( edx&0x04000000 )
         cpu |= X264_CPU_SSE2;
     if( ecx&0x00000001 )
         cpu |= X264_CPU_SSE3;
     if( ecx&0x00000200 )
-        cpu |= X264_CPU_SSSE3;
+        cpu |= X264_CPU_SSSE3|X264_CPU_SSE2_IS_FAST;
     if( ecx&0x00080000 )
         cpu |= X264_CPU_SSE4;
     if( ecx&0x00100000 )
         cpu |= X264_CPU_SSE42;
-    /* Check OXSAVE and AVX bits */
-    if( (ecx&0x18000000) == 0x18000000 )
+
+    if( ecx&0x08000000 ) /* XGETBV supported and XSAVE enabled by OS */
     {
-        /* Check for OS support */
-        x264_cpu_xgetbv( 0, &eax, &edx );
-        if( (eax&0x6) == 0x6 )
+        uint64_t xcr0 = x264_cpu_xgetbv( 0 );
+        if( (xcr0&0x6) == 0x6 ) /* XMM/YMM state */
         {
-            cpu |= X264_CPU_AVX;
+            if( ecx&0x10000000 )
+                cpu |= X264_CPU_AVX;
             if( ecx&0x00001000 )
                 cpu |= X264_CPU_FMA3;
+
+            if( max_basic_cap >= 7 )
+            {
+                x264_cpu_cpuid( 7, &eax, &ebx, &ecx, &edx );
+                if( ebx&0x00000008 )
+                    cpu |= X264_CPU_BMI1;
+                if( ebx&0x00000100 )
+                    cpu |= X264_CPU_BMI2;
+                if( ebx&0x00000020 )
+                    cpu |= X264_CPU_AVX2;
+
+                if( (xcr0&0xE0) == 0xE0 ) /* OPMASK/ZMM state */
+                {
+                    if( (ebx&0xD0030000) == 0xD0030000 )
+                        cpu |= X264_CPU_AVX512;
+                }
+            }
         }
     }
-
-    if( max_basic_cap >= 7 )
-    {
-        x264_cpu_cpuid( 7, &eax, &ebx, &ecx, &edx );
-        /* AVX2 requires OS support, but BMI1/2 don't. */
-        if( (cpu&X264_CPU_AVX) && (ebx&0x00000020) )
-            cpu |= X264_CPU_AVX2;
-        if( ebx&0x00000008 )
-        {
-            cpu |= X264_CPU_BMI1;
-            if( ebx&0x00000100 )
-                cpu |= X264_CPU_BMI2;
-        }
-    }
-
-    if( cpu & X264_CPU_SSSE3 )
-        cpu |= X264_CPU_SSE2_IS_FAST;
 
     x264_cpu_cpuid( 0x80000000, &eax, &ebx, &ecx, &edx );
     max_extended_cap = eax;
@@ -230,8 +228,6 @@ uint32_t x264_cpu_detect( void )
         {
             if( edx&0x00400000 )
                 cpu |= X264_CPU_MMX2;
-            if( !(cpu&X264_CPU_LZCNT) )
-                cpu |= X264_CPU_SLOW_CTZ;
             if( (cpu&X264_CPU_SSE2) && !(cpu&X264_CPU_SSE2_IS_FAST) )
                 cpu |= X264_CPU_SSE2_IS_SLOW; /* AMD CPUs come in two types: terrible at SSE and great at it */
         }
@@ -244,19 +240,10 @@ uint32_t x264_cpu_detect( void )
         int model  = ((eax>>4)&0xf) + ((eax>>12)&0xf0);
         if( family == 6 )
         {
-            /* 6/9 (pentium-m "banias"), 6/13 (pentium-m "dothan"), and 6/14 (core1 "yonah")
-             * theoretically support sse2, but it's significantly slower than mmx for
-             * almost all of x264's functions, so let's just pretend they don't. */
-            if( model == 9 || model == 13 || model == 14 )
-            {
-                cpu &= ~(X264_CPU_SSE2|X264_CPU_SSE3);
-                assert(!(cpu&(X264_CPU_SSSE3|X264_CPU_SSE4)));
-            }
             /* Detect Atom CPU */
-            else if( model == 28 )
+            if( model == 28 )
             {
                 cpu |= X264_CPU_SLOW_ATOM;
-                cpu |= X264_CPU_SLOW_CTZ;
                 cpu |= X264_CPU_SLOW_PSHUFB;
             }
             /* Conroe has a slow shuffle unit. Check the model number to make sure not
@@ -270,7 +257,7 @@ uint32_t x264_cpu_detect( void )
     {
         /* cacheline size is specified in 3 places, any of which may be missing */
         x264_cpu_cpuid( 1, &eax, &ebx, &ecx, &edx );
-        cache = (ebx&0xff00)>>5; // cflush size
+        int cache = (ebx&0xff00)>>5; // cflush size
         if( !cache && max_extended_cap >= 0x80000006 )
         {
             x264_cpu_cpuid( 0x80000006, &eax, &ebx, &ecx, &edx );
@@ -306,7 +293,7 @@ uint32_t x264_cpu_detect( void )
         else if( cache == 64 )
             cpu |= X264_CPU_CACHELINE_64;
         else
-            x264_log( NULL, X264_LOG_WARNING, "unable to determine cacheline size\n" );
+            x264_log_internal( X264_LOG_WARNING, "unable to determine cacheline size\n" );
     }
 
 #if STACK_ALIGNMENT < 16
@@ -316,10 +303,10 @@ uint32_t x264_cpu_detect( void )
     return cpu;
 }
 
-#elif ARCH_PPC && HAVE_ALTIVEC
+#elif HAVE_ALTIVEC
 
 #if SYS_MACOSX || SYS_OPENBSD || SYS_FREEBSD
-#include <sys/sysctl.h>
+
 uint32_t x264_cpu_detect( void )
 {
     /* Thank you VLC */
@@ -373,15 +360,14 @@ uint32_t x264_cpu_detect( void )
 }
 #endif
 
-#elif ARCH_ARM
+#elif HAVE_ARMV6
 
 void x264_cpu_neon_test( void );
 int x264_cpu_fast_neon_mrc_test( void );
 
 uint32_t x264_cpu_detect( void )
 {
-    int flags = 0;
-#if HAVE_ARMV6
+    uint32_t flags = 0;
     flags |= X264_CPU_ARMV6;
 
     // don't do this hack if compiled with -mfpu=neon
@@ -414,26 +400,25 @@ uint32_t x264_cpu_detect( void )
     flags |= x264_cpu_fast_neon_mrc_test() ? X264_CPU_FAST_NEON_MRC : 0;
 #endif
     // TODO: write dual issue test? currently it's A8 (dual issue) vs. A9 (fast mrc)
-#endif
     return flags;
 }
 
-#elif ARCH_AARCH64
+#elif HAVE_AARCH64
 
 uint32_t x264_cpu_detect( void )
 {
+#if HAVE_NEON
     return X264_CPU_ARMV8 | X264_CPU_NEON;
+#else
+    return X264_CPU_ARMV8;
+#endif
 }
 
-#elif ARCH_MIPS
+#elif HAVE_MSA
 
 uint32_t x264_cpu_detect( void )
 {
-    uint32_t flags = 0;
-#if HAVE_MSA
-    flags |= X264_CPU_MSA;
-#endif
-    return flags;
+    return X264_CPU_MSA;
 }
 
 #else
@@ -453,7 +438,7 @@ int x264_cpu_num_processors( void )
 #elif SYS_WINDOWS
     return x264_pthread_num_processors_np();
 
-#elif SYS_CYGWIN || SYS_SunOS
+#elif SYS_CYGWIN || SYS_SunOS || SYS_OPENBSD
     return sysconf( _SC_NPROCESSORS_ONLN );
 
 #elif SYS_LINUX
@@ -469,7 +454,7 @@ int x264_cpu_num_processors( void )
     return CPU_COUNT(&p_aff);
 #else
     int np = 0;
-    for( unsigned int bit = 0; bit < 8 * sizeof(p_aff); bit++ )
+    for( size_t bit = 0; bit < 8 * sizeof(p_aff); bit++ )
         np += (((uint8_t *)&p_aff)[bit / 8] >> (bit % 8)) & 1;
     return np;
 #endif
@@ -480,15 +465,10 @@ int x264_cpu_num_processors( void )
     get_system_info( &info );
     return info.cpu_count;
 
-#elif SYS_MACOSX || SYS_FREEBSD || SYS_OPENBSD
+#elif SYS_MACOSX || SYS_FREEBSD
     int ncpu;
     size_t length = sizeof( ncpu );
-#if SYS_OPENBSD
-    int mib[2] = { CTL_HW, HW_NCPU };
-    if( sysctl(mib, 2, &ncpu, &length, NULL, 0) )
-#else
     if( sysctlbyname("hw.ncpu", &ncpu, &length, NULL, 0) )
-#endif
     {
         ncpu = 1;
     }
