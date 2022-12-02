@@ -1,7 +1,7 @@
 /*****************************************************************************
  * thread.c: threaded input
  *****************************************************************************
- * Copyright (C) 2003-2016 x264 project
+ * Copyright (C) 2003-2022 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
@@ -25,6 +25,9 @@
  *****************************************************************************/
 
 #include "input.h"
+#include "common/common.h"
+
+#define thread_input x264_glue3(thread, BIT_DEPTH, input)
 
 typedef struct
 {
@@ -49,7 +52,7 @@ static int open_file( char *psz_filename, hnd_t *p_handle, video_info_t *info, c
 {
     thread_hnd_t *h = malloc( sizeof(thread_hnd_t) );
     FAIL_IF_ERR( !h || cli_input.picture_alloc( &h->pic, *p_handle, info->csp, info->width, info->height ),
-                 "x264", "malloc failed\n" )
+                 "x264", "malloc failed\n" );
     h->input = cli_input;
     h->p_handle = *p_handle;
     h->next_frame = -1;
@@ -60,7 +63,7 @@ static int open_file( char *psz_filename, hnd_t *p_handle, video_info_t *info, c
     h->next_args->status = 0;
     h->frame_total = info->num_frames;
 
-    if( x264_threadpool_init( &h->pool, 1, NULL, NULL ) )
+    if( x264_threadpool_init( &h->pool, 1 ) )
         return -1;
 
     *p_handle = h;

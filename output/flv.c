@@ -1,7 +1,7 @@
 /*****************************************************************************
  * flv.c: flv muxer
  *****************************************************************************
- * Copyright (C) 2009-2016 x264 project
+ * Copyright (C) 2009-2022 x264 project
  *
  * Authors: Kieran Kunhya <kieran@kunhya.com>
  *
@@ -196,7 +196,7 @@ static int write_headers( hnd_t handle, x264_nal_t *p_nal )
     flv_put_be24( c, 0 ); // StreamID - Always 0
     p_flv->start = c->d_cur; // needed for overwriting length
 
-    flv_put_byte( c, 7 | FLV_FRAME_KEY ); // Frametype and CodecID
+    flv_put_byte( c, FLV_FRAME_KEY | FLV_CODECID_H264 ); // FrameType and CodecID
     flv_put_byte( c, 0 ); // AVC sequence header
     flv_put_be24( c, 0 ); // composition time
 
@@ -279,7 +279,7 @@ static int write_frame( hnd_t handle, uint8_t *p_nalu, int i_size, x264_picture_
     flv_put_be24( c, 0 );
 
     p_flv->start = c->d_cur;
-    flv_put_byte( c, p_picture->b_keyframe ? FLV_FRAME_KEY : FLV_FRAME_INTER );
+    flv_put_byte( c, (p_picture->b_keyframe ? FLV_FRAME_KEY : FLV_FRAME_INTER) | FLV_CODECID_H264 );
     flv_put_byte( c, 1 ); // AVC NALU
     flv_put_be24( c, offset );
 
@@ -322,12 +322,17 @@ static int close_file( hnd_t handle, int64_t largest_pts, int64_t second_largest
 
     CHECK( flv_flush_data( c ) );
 
-    double total_duration = (2 * largest_pts - second_largest_pts) * p_flv->d_timebase;
+    double total_duration;
+    /* duration algorithm fails with one frame */
+    if( p_flv->i_framenum == 1 )
+        total_duration = p_flv->i_fps_num ? (double)p_flv->i_fps_den / p_flv->i_fps_num : 0;
+    else
+        total_duration = (2 * largest_pts - second_largest_pts) * p_flv->d_timebase;
 
     if( x264_is_regular_file( c->fp ) && total_duration > 0 )
     {
         double framerate;
-        uint64_t filesize = ftell( c->fp );
+        int64_t filesize = ftell( c->fp );
 
         if( p_flv->i_framerate_pos )
         {
@@ -337,7 +342,7 @@ static int close_file( hnd_t handle, int64_t largest_pts, int64_t second_largest
 
         CHECK( rewrite_amf_double( c->fp, p_flv->i_duration_pos, total_duration ) );
         CHECK( rewrite_amf_double( c->fp, p_flv->i_filesize_pos, filesize ) );
-        CHECK( rewrite_amf_double( c->fp, p_flv->i_bitrate_pos, filesize * 8 / ( total_duration * 1000 ) ) );
+        CHECK( rewrite_amf_double( c->fp, p_flv->i_bitrate_pos, filesize * 8.0 / ( total_duration * 1000 ) ) );
     }
     ret = 0;
 

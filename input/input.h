@@ -1,7 +1,7 @@
 /*****************************************************************************
  * input.h: file input
  *****************************************************************************
- * Copyright (C) 2003-2016 x264 project
+ * Copyright (C) 2003-2022 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
@@ -29,6 +29,10 @@
 #define X264_INPUT_H
 
 #include "x264cli.h"
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 /* options that are used by only some demuxers */
 typedef struct
@@ -98,7 +102,8 @@ typedef struct
 extern const cli_input_t raw_input;
 extern const cli_input_t y4m_input;
 extern const cli_input_t avs_input;
-extern const cli_input_t thread_input;
+extern const cli_input_t thread_8_input;
+extern const cli_input_t thread_10_input;
 extern const cli_input_t lavf_input;
 extern const cli_input_t ffms_input;
 extern const cli_input_t timecode_input;
@@ -127,23 +132,27 @@ int      x264_cli_pic_alloc( cli_pic_t *pic, int csp, int width, int height );
 int      x264_cli_pic_alloc_aligned( cli_pic_t *pic, int csp, int width, int height );
 int      x264_cli_pic_init_noalloc( cli_pic_t *pic, int csp, int width, int height );
 void     x264_cli_pic_clean( cli_pic_t *pic );
-uint64_t x264_cli_pic_plane_size( int csp, int width, int height, int plane );
-uint64_t x264_cli_pic_size( int csp, int width, int height );
+int64_t  x264_cli_pic_plane_size( int csp, int width, int height, int plane );
+int64_t  x264_cli_pic_size( int csp, int width, int height );
 const x264_cli_csp_t *x264_cli_get_csp( int csp );
 
 typedef struct
 {
+    int64_t file_size;
     int align_mask;
 #ifdef _WIN32
-    void *map_handle;
+    int page_mask;
+    BOOL (WINAPI *prefetch_virtual_memory)( HANDLE, ULONG_PTR, PVOID, ULONG );
+    HANDLE process_handle;
+    HANDLE map_handle;
 #elif HAVE_MMAP
     int fd;
 #endif
 } cli_mmap_t;
 
 int x264_cli_mmap_init( cli_mmap_t *h, FILE *fh );
-void *x264_cli_mmap( cli_mmap_t *h, int64_t offset, size_t size );
-int x264_cli_munmap( cli_mmap_t *h, void *addr, size_t size );
+void *x264_cli_mmap( cli_mmap_t *h, int64_t offset, int64_t size );
+int x264_cli_munmap( cli_mmap_t *h, void *addr, int64_t size );
 void x264_cli_mmap_close( cli_mmap_t *h );
 
 #endif

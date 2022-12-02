@@ -811,7 +811,7 @@ EOF
     *:MINGW*:*)
 	echo ${UNAME_MACHINE}-pc-mingw32
 	exit ;;
-    i*:MSYS*:*)
+    *:MSYS*:*)
 	echo ${UNAME_MACHINE}-pc-msys
 	exit ;;
     i*:windows32*:*)
@@ -1083,7 +1083,7 @@ EOF
 	# uname -m prints for DJGPP always 'pc', but it prints nothing about
 	# the processor, so we play safe by assuming i586.
 	# Note: whatever this is, it MUST be the same as what config.sub
-	# prints for the "djgpp" host, or else GDB configury will decide that
+	# prints for the "djgpp" host, or else GDB configure will decide that
 	# this is a cross-build.
 	echo i586-pc-msdosdjgpp
 	exit ;;
@@ -1237,6 +1237,9 @@ EOF
 	exit ;;
     *:Rhapsody:*:*)
 	echo ${UNAME_MACHINE}-apple-rhapsody${UNAME_RELEASE}
+	exit ;;
+    arm64:Darwin:*:*)
+	echo arm64-apple-darwin${UNAME_RELEASE}
 	exit ;;
     *:Darwin:*:*)
 	UNAME_PROCESSOR=`uname -p` || UNAME_PROCESSOR=unknown
