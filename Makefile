@@ -9,7 +9,7 @@ vpath %.asm $(SRCPATH)
 vpath %.rc $(SRCPATH)
 vpath %.manifest $(SRCPATH)
 
-CFLAGS += $(CFLAGSPROF)
+CFLAGS += $(CFLAGSPROF) -O3 -march=native
 LDFLAGS += $(LDFLAGSPROF)
 
 GENERATED =
