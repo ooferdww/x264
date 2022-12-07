@@ -16,3 +16,5 @@ Build instructions:
 If you've done everything correctly, x264.exe will be dropped into RepositoryClone/installed/bin
 
 10) OPTIONAL -- Pack executable with upx -9 --ultra-brute x264.exe
+
+(attempting to incorporate clang build support)
