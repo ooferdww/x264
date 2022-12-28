@@ -1,17 +1,11 @@
 # x264
-AVC (H.264) encoder.
+AVC (H.264) encoder with hypertuned preset + media server intention. (in-progress)
 
-Build instructions: (OUTDATED, todo: update)
+MSVC build: CC=cl ./configure --enable-static --prefix=${PWD}/installed && make && make install
 
-1) Get MSYS2.
-2) Run MSYS2 MSYS.
-3) pacman -Syu
-4) Clone repository: git clone https://github.com/ooferdww/x264
-7) C:\msys64\msys2_shell.cmd -mingw64 -use-full-path
-8) Navigate into repo clone in mingw64 window, generally: cd x264
-9) CC=gcc ./configure --enable-static && make && make install
+GCC build: CC=gcc ./configure --enable-static --extra-cflags="-O3 -march=native" && make && make install && strip -s /usr/local/bin/x264.exe
+           (gcc build exe is dropped into /usr/local/bin/ instead of x264 source folder)
+           Bundle gcc build in MSYS2 with libffms2-4.dll, liblsmash-2.dll, zlib1.dll
 
-If you've done everything correctly, x264.exe will be dropped into C:\msys64\usr\local\bin
-Bundle libffms2-4.dll, liblsmash-2.dll, zlib1.dll
-
-10) OPTIONAL -- Pack executable with upx -9 --ultra-brute x264.exe
+Compressing for very small x264 executable: Get UPX.
+                                            upx -9 --ultra-brute x264.exe
