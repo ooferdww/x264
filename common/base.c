@@ -600,6 +600,22 @@ static int param_apply_preset( x264_param_t *param, const char *preset )
         param->i_bframe = 16;
         param->rc.i_lookahead = 60;
     }
+	 else if( !strcasecmp( preset, "netflixhigh" ) )
+    {
+        param->analyse.i_me_method = X264_ME_TESA;
+        param->analyse.i_subpel_refine = 10;
+        param->analyse.i_me_range = 120;
+        param->i_frame_reference = 4;
+        param->i_bframe_adaptive = X264_B_ADAPT_TRELLIS;
+        param->analyse.i_direct_mv_pred = X264_DIRECT_PRED_AUTO;
+        param->analyse.inter = X264_ANALYSE_I8x8|X264_ANALYSE_I4x4;
+        param->analyse.b_fast_pskip = 1;
+        param->analyse.i_trellis = 2;
+        param->i_bframe = 16;
+        param->rc.i_lookahead = 240;
+		param->i_scenecut_threshold = 0;
+		param->b_stitchable = 1;
+    }
     else
     {
         x264_log_internal( X264_LOG_ERROR, "invalid preset '%s'\n", preset );
