@@ -635,10 +635,12 @@ static void help( x264_param_t *defaults, int longhelp )
 	"				   - nfmain:\n"
         "				     Netflix Main profile settings\n"		
 	"				   - nfhigh:\n"
-        "				     Netflix High profile settings\n"		);
+        "				     Netflix High profile settings\n"
+      	"				   - ooferslow:\n
+      	"				     oofer_dww slow settings\n			);
     else H0( "                                  - ultrafast,superfast,veryfast,faster,fast\n"
              "                                  - medium,slow,slower,veryslow,placebo\n"
-			 "			- nfmain,nfhigh,ooferslow\n"			 );
+			 "			- nfmain,nfhigh,ooferslow\n"		);
     H0( "      --tune <string>         Tune the settings for a particular type of source\n"
         "                              or situation\n"
         "                                  Overridden by user settings.\n"
