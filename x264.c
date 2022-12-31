@@ -632,13 +632,13 @@ static void help( x264_param_t *defaults, int longhelp )
         "                                    --me tesa --merange 24 --partitions all\n"
         "                                    --rc-lookahead 60 --ref 16 --subme 11\n"
         "                                    --trellis 2\n"
-		"								   - nfmain:\n"
-        "                                    Netflix Main profile settings\n"		
-		"								   - nfhigh:\n"
-        "                                    Netflix High profile settings\n"		);
+	"				   - nfmain:\n"
+        "				     Netflix Main profile settings\n"		
+	"				   - nfhigh:\n"
+        "				     Netflix High profile settings\n"		);
     else H0( "                                  - ultrafast,superfast,veryfast,faster,fast\n"
              "                                  - medium,slow,slower,veryslow,placebo\n"
-			 "									- nfmain,nfhigh\n"		);
+			 "			- nfmain,nfhigh,ooferslow\n"			 );
     H0( "      --tune <string>         Tune the settings for a particular type of source\n"
         "                              or situation\n"
         "                                  Overridden by user settings.\n"
