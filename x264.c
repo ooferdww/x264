@@ -637,7 +637,7 @@ static void help( x264_param_t *defaults, int longhelp )
 	"				   - nfhigh:\n"
         "				     Netflix High profile settings\n"
       	"				   - ooferslow:\n
-      	"				     oofer_dww slow settings\n			);
+      	"				     oofer_dww slow settings\n"			);
     else H0( "                                  - ultrafast,superfast,veryfast,faster,fast\n"
              "                                  - medium,slow,slower,veryslow,placebo\n"
 			 "			- nfmain,nfhigh,ooferslow\n"		);
