@@ -612,8 +612,6 @@ int x264_sei_version_write( x264_t *h, bs_t *s )
              X264_BUILD, X264_VERSION, HAVE_GPL?"left":"right", opts );
     length = strlen(payload)+1;
 
-    x264_sei_write( s, (uint8_t *)payload, length, SEI_USER_DATA_UNREGISTERED );
-
     x264_free( opts );
     x264_free( payload );
     return 0;
@@ -841,8 +839,6 @@ int x264_sei_avcintra_umid_write( x264_t *h, bs_t *s )
     data[68] = 0x63;
     data[70] = data[71] = data[73] = data[74] = 0;
 
-    x264_sei_write( &h->out.bs, data, len, SEI_USER_DATA_UNREGISTERED );
-
     return 0;
 }
 
@@ -859,8 +855,6 @@ int x264_sei_avcintra_vanc_write( x264_t *h, bs_t *s, int len )
     memset( data, 0xff, len );
     memcpy( data, avcintra_uuid, sizeof(avcintra_uuid) );
     memcpy( data+16, msg, strlen(msg) );
-
-    x264_sei_write( &h->out.bs, data, len, SEI_USER_DATA_UNREGISTERED );
 
     return 0;
 }
