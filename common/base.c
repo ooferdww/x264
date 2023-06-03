@@ -471,7 +471,7 @@ REALIGN_STACK void x264_param_default( x264_param_t *param )
     param->b_repeat_headers = 1;
     param->b_annexb = 1;
     param->b_aud = 0;
-    param->b_vfr_input = 1;
+    param->b_vfr_input = 0;
     param->i_nal_hrd = X264_NAL_HRD_NONE;
     param->b_tff = 1;
     param->b_pic_struct = 0;
@@ -656,31 +656,36 @@ static int param_apply_preset( x264_param_t *param, const char *preset )
 	param->i_nal_hrd = X264_NAL_HRD_VBR;
 	param->analyse.b_transform_8x8 = 1;
 	}
-	else if( !strcasecmp( preset, "ooferplacebo" ) )
+    	else if( !strcasecmp( preset, "rlslow" ) )
     {
         param->analyse.i_me_method = X264_ME_UMH;
-        param->analyse.i_subpel_refine = 11;
-        param->analyse.i_me_range = 36;
+        param->analyse.i_subpel_refine = 9;
+        param->analyse.i_me_range = 32;
         param->i_frame_reference = 4;
         param->i_bframe_adaptive = X264_B_ADAPT_TRELLIS;
         param->analyse.i_direct_mv_pred = X264_DIRECT_PRED_AUTO;
-        param->analyse.inter = X264_ANALYSE_BSUB16x16|X264_ANALYSE_I4x4|X264_ANALYSE_PSUB16x16;
-        param->analyse.b_fast_pskip = 0;
+        param->analyse.inter |= X264_ANALYSE_PSUB8x8;
         param->analyse.i_trellis = 2;
-        param->i_bframe = 8;
+        param->i_bframe = 4;
         param->rc.i_lookahead = 40;
-	param->i_scenecut_threshold = 8;
-	param->b_stitchable = 0;
-	param->i_lookahead_threads = 1;
-	param->i_keyint_min = 12;
-	param->i_keyint_max = 240;
-	param->rc.f_qcompress = 0.6;
-	param->rc.i_qp_min = 6;
-	param->rc.i_qp_max = 51;
-	param->rc.i_vbv_max_bitrate = 20000;
-	param->rc.i_vbv_buffer_size = 25000;
-	param->i_nal_hrd = X264_NAL_HRD_VBR;
-	}
+	param->rc.f_aq_strength = 0.8;
+    }
+    	else if( !strcasecmp( preset, "anslow" ) )
+    {
+        param->analyse.i_me_method = X264_ME_UMH;
+        param->analyse.i_subpel_refine = 8;
+        param->analyse.i_me_range = 28;
+        param->i_frame_reference = 4;
+        param->i_bframe_adaptive = X264_B_ADAPT_TRELLIS;
+        param->analyse.i_direct_mv_pred = X264_DIRECT_PRED_AUTO;
+        param->analyse.inter |= X264_ANALYSE_PSUB8x8;
+        param->analyse.i_trellis = 2;
+        param->i_bframe = 4;
+        param->rc.i_lookahead = 40;
+	param->rc.f_aq_strength = 0.6;
+        param->rc.i_aq_mode = 3;
+	param->analyse.f_psy_rd = 0.6;
+    }
     else
     {
         x264_log_internal( X264_LOG_ERROR, "invalid preset '%s'\n", preset );
