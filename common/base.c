@@ -669,7 +669,6 @@ static int param_apply_preset( x264_param_t *param, const char *preset )
         param->i_bframe = 4;
         param->rc.i_lookahead = 40;
 	param->rc.f_aq_strength = 0.8;
-	param->b_open_gop = 1;
     }
     	else if( !strcasecmp( preset, "anslow" ) )
     {
@@ -686,7 +685,6 @@ static int param_apply_preset( x264_param_t *param, const char *preset )
 	param->rc.f_aq_strength = 0.6;
         param->rc.i_aq_mode = 3;
 	param->analyse.f_psy_rd = 0.6;
-	param->b_open_gop = 1;
     }
     else
     {
