@@ -471,7 +471,7 @@ REALIGN_STACK void x264_param_default( x264_param_t *param )
     param->b_repeat_headers = 1;
     param->b_annexb = 1;
     param->b_aud = 0;
-    param->b_vfr_input = 1;
+    param->b_vfr_input = 0;
     param->i_nal_hrd = X264_NAL_HRD_NONE;
     param->b_tff = 1;
     param->b_pic_struct = 0;
@@ -669,6 +669,7 @@ static int param_apply_preset( x264_param_t *param, const char *preset )
         param->i_bframe = 4;
         param->rc.i_lookahead = 40;
 	param->rc.f_aq_strength = 0.8;
+	param->b_open_gop = 1;
     }
     	else if( !strcasecmp( preset, "anslow" ) )
     {
@@ -685,6 +686,7 @@ static int param_apply_preset( x264_param_t *param, const char *preset )
 	param->rc.f_aq_strength = 0.6;
         param->rc.i_aq_mode = 3;
 	param->analyse.f_psy_rd = 0.6;
+	param->b_open_gop = 1;
     }
     else
     {
