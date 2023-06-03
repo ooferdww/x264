@@ -1,7 +1,7 @@
 /*****************************************************************************
  * set: header writing
  *****************************************************************************
- * Copyright (C) 2003-2022 x264 project
+ * Copyright (C) 2003-2023 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
@@ -607,10 +607,9 @@ int x264_sei_version_write( x264_t *h, bs_t *s )
     CHECKED_MALLOC( payload, 200 + strlen( opts ) );
 
     memcpy( payload, uuid, 16 );
-    sprintf( payload+16, "x264 - core %d%s - H.264/MPEG-4 AVC codec - "
-             "Copy%s 2003-2022 - http://www.videolan.org/x264.html - options: %s",
-             X264_BUILD, X264_VERSION, HAVE_GPL?"left":"right", opts );
     length = strlen(payload)+1;
+
+    x264_sei_write( s, (uint8_t *)payload, length, SEI_USER_DATA_UNREGISTERED );
 
     x264_free( opts );
     x264_free( payload );
@@ -839,6 +838,8 @@ int x264_sei_avcintra_umid_write( x264_t *h, bs_t *s )
     data[68] = 0x63;
     data[70] = data[71] = data[73] = data[74] = 0;
 
+    x264_sei_write( &h->out.bs, data, len, SEI_USER_DATA_UNREGISTERED );
+
     return 0;
 }
 
@@ -855,6 +856,8 @@ int x264_sei_avcintra_vanc_write( x264_t *h, bs_t *s, int len )
     memset( data, 0xff, len );
     memcpy( data, avcintra_uuid, sizeof(avcintra_uuid) );
     memcpy( data+16, msg, strlen(msg) );
+
+    x264_sei_write( &h->out.bs, data, len, SEI_USER_DATA_UNREGISTERED );
 
     return 0;
 }
