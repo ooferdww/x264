@@ -451,6 +451,8 @@ REALIGN_STACK void x264_param_default( x264_param_t *param )
     param->rc.f_mb_curve_low = 0.15;
     param->rc.f_mb_tree_low = 0;
 
+    param->sei_writeinfo = 1;
+
     /* Log */
     param->pf_log = x264_log_default;
     param->p_log_private = NULL;
@@ -1428,6 +1430,8 @@ REALIGN_STACK int x264_param_parse( x264_param_t *p, const char *name, const cha
     }
     OPT("mbtree")
         p->rc.b_mb_tree = atobool(value);
+    OPT("info")
+	p->sei_writeinfo = atobool(value);
     OPT("mbtree-strength")
         b_error |= sscanf( value, "%f,%f,%f,%f", &p->rc.f_mb_tree_strength, &p->rc.f_mb_tree_kf, &p->rc.f_mb_tree_all, &p->rc.f_mb_tree_aq ) != 4;
     OPT("mbtree-curve")
