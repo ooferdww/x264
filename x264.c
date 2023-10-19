@@ -1108,6 +1108,8 @@ static struct option long_options[] =
     { "qcomp",                required_argument, NULL, 0 },
     { "mbtree",               no_argument,       NULL, 0 },
     { "no-mbtree",            no_argument,       NULL, 0 },
+    { "info",                 no_argument,       NULL, 0 },
+    { "no-info",              no_argument,       NULL, 0 },
     { "qblur",                required_argument, NULL, 0 },
     { "cplxblur",             required_argument, NULL, 0 },
     { "zones",                required_argument, NULL, 0 },
