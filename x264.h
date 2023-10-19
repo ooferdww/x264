@@ -477,6 +477,7 @@ typedef struct x264_param_t
         float       f_frameboost;
         float       f_frameboost_reduce;
         int         b_mb_tree;      /* Macroblock-tree ratecontrol. */
+        int         sei_writeinfo;
         float       f_mb_tree_curve;
         float       f_mb_tree_psy;
         float       f_mb_tree_aq;
