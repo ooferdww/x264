@@ -1,7 +1,7 @@
 /*****************************************************************************
  * me.c: motion estimation
  *****************************************************************************
- * Copyright (C) 2003-2022 x264 project
+ * Copyright (C) 2003-2023 x264 project
  *
  * Authors: Loren Merritt <lorenm@u.washington.edu>
  *          Laurent Aimar <fenrir@via.ecp.fr>
@@ -317,7 +317,14 @@ void x264_me_search_ref( x264_t *h, x264_me_t *m, int16_t (*mvc)[2], int i_mvc, 
             COST_MV( 0, 0 );
     }
 
-    switch( h->mb.i_me_method )
+    int me_qty = h->mb.i_me_method;
+    int me_range_qty = i_me_range;
+    if( h->mb.i_me_method == X264_ME_UMH && h->fdec->quality == 1.f && i_me_range >= 64 )
+    {
+        me_qty = X264_ME_HEX;
+        me_range_qty = 16;
+    }
+    switch( me_qty )
     {
         case X264_ME_DIA:
         {
@@ -343,10 +350,27 @@ void x264_me_search_ref( x264_t *h, x264_me_t *m, int16_t (*mvc)[2], int i_mvc, 
 
         case X264_ME_HEX:
         {
+            /* diamond search, radius 1 */
+            bcost <<= 4;
+            int i = me_range_qty;
+            do
+            {
+                COST_MV_X4_DIR( 0,-1, 0,1, -1,0, 1,0, costs );
+                COPY1_IF_LT( bcost, (costs[0]<<4)+1 );
+                COPY1_IF_LT( bcost, (costs[1]<<4)+3 );
+                COPY1_IF_LT( bcost, (costs[2]<<4)+4 );
+                COPY1_IF_LT( bcost, (costs[3]<<4)+12 );
+                if( !(bcost&15) )
+                    break;
+                bmx -= (bcost<<28)>>30;
+                bmy -= (bcost<<30)>>30;
+                bcost &= ~15;
+            } while( --i && CHECK_MVRANGE(bmx, bmy) );
+            bcost >>= 4;
     me_hex2:
             /* hexagon search, radius 2 */
     #if 0
-            for( int i = 0; i < i_me_range/2; i++ )
+            for( i = 0; i < me_range_qty/2; i++ )
             {
                 omx = bmx; omy = bmy;
                 COST_MV( omx-2, omy   );
@@ -381,7 +405,7 @@ void x264_me_search_ref( x264_t *h, x264_me_t *m, int16_t (*mvc)[2], int i_mvc, 
                 bmy += hex2[dir+1][1];
 
                 /* half hexagon, not overlapping the previous iteration */
-                for( int i = (i_me_range>>1) - 1; i > 0 && CHECK_MVRANGE(bmx, bmy); i-- )
+                for( i = (me_range_qty>>1) - 1; i > 0 && CHECK_MVRANGE(bmx, bmy); i-- )
                 {
                     COST_MV_X3_DIR( hex2[dir+0][0], hex2[dir+0][1],
                                     hex2[dir+1][0], hex2[dir+1][1],

@@ -1,7 +1,7 @@
 /*****************************************************************************
  * ratecontrol.c: ratecontrol
  *****************************************************************************
- * Copyright (C) 2005-2022 x264 project
+ * Copyright (C) 2005-2023 x264 project
  *
  * Authors: Loren Merritt <lorenm@u.washington.edu>
  *          Michael Niedermayer <michaelni@gmx.at>
@@ -91,6 +91,7 @@ struct x264_ratecontrol_t
     int   qpa_aq;               /* average of macroblocks' qp after aq */
     int   qpa_aq_prev;
     float qp_novbv;             /* QP for the current frame if 1-pass VBV was disabled. */
+    float pb_factor_aq;
 
     /* VBV stuff */
     double buffer_size;
@@ -248,8 +249,8 @@ static ALWAYS_INLINE uint32_t ac_energy_plane( x264_t *h, int mb_x, int mb_y, x2
         int shift = 7 - CHROMA_V_SHIFT;
 
         h->mc.load_deinterleave_chroma_fenc( pix, frame->plane[1] + offset, stride, height );
-        return ac_energy_var( h->pixf.var[chromapix]( pix,               FENC_STRIDE ), shift, frame, 1, b_store )
-             + ac_energy_var( h->pixf.var[chromapix]( pix+FENC_STRIDE/2, FENC_STRIDE ), shift, frame, 2, b_store );
+        return ac_energy_var( h->pixf.var[chromapix]( pix,               FENC_STRIDE ), shift, frame, 1, b_store );
+             //+ ac_energy_var( h->pixf.var[chromapix]( pix+FENC_STRIDE/2, FENC_STRIDE ), shift, frame, 2, b_store );
     }
     else
         return ac_energy_var( h->pixf.var[PIXEL_16x16]( frame->plane[i] + offset, stride ), 8, frame, i, b_store );
@@ -302,6 +303,7 @@ static NOINLINE uint32_t ac_energy_mb( x264_t *h, int mb_x, int mb_y, x264_frame
 
 void x264_adaptive_quant_frame( x264_t *h, x264_frame_t *frame, float *quant_offsets )
 {
+    frame->bias_aq = h->param.i_bframe_bias;
     /* Initialize frame stats */
     for( int i = 0; i < 3; i++ )
     {
@@ -349,7 +351,6 @@ void x264_adaptive_quant_frame( x264_t *h, x264_frame_t *frame, float *quant_off
          * FIXME: while they're written in 5 significant digits, they're only tuned to 2. */
         float strength;
         float avg_adj = 0.f;
-        float bias_strength = 0.f;
 
         if( h->param.rc.i_aq_mode == X264_AQ_AUTOVARIANCE || h->param.rc.i_aq_mode == X264_AQ_AUTOVARIANCE_BIASED )
         {
@@ -359,7 +360,7 @@ void x264_adaptive_quant_frame( x264_t *h, x264_frame_t *frame, float *quant_off
                 for( int mb_x = 0; mb_x < h->mb.i_mb_width; mb_x++ )
                 {
                     uint32_t energy = ac_energy_mb( h, mb_x, mb_y, frame );
-                    float qp_adj = powf( energy * bit_depth_correction + 1, 0.125f );
+                    float qp_adj = powf( (energy > 0 ? energy : 16384) * bit_depth_correction + 1, 0.125f );
                     frame->f_qp_offset[mb_x + mb_y*h->mb.i_mb_stride] = qp_adj;
                     avg_adj += qp_adj;
                     avg_adj_pow2 += qp_adj * qp_adj;
@@ -368,20 +369,26 @@ void x264_adaptive_quant_frame( x264_t *h, x264_frame_t *frame, float *quant_off
             avg_adj_pow2 /= h->mb.i_mb_count;
             strength = h->param.rc.f_aq_strength * avg_adj;
             avg_adj = avg_adj - 0.5f * (avg_adj_pow2 - 14.f) / avg_adj;
-            bias_strength = h->param.rc.f_aq_strength;
         }
         else
             strength = h->param.rc.f_aq_strength * 1.0397f;
 
+        frame->avg_qp = 0;
+        double avg_qp_d = 0;
+        float qty = h->fdec->quality > 0 ? h->fdec->quality : 1.f;
         for( int mb_y = 0; mb_y < h->mb.i_mb_height; mb_y++ )
             for( int mb_x = 0; mb_x < h->mb.i_mb_width; mb_x++ )
             {
                 float qp_adj;
+                float qp_adj_d = 0;
+                float qp_adj_s;
                 int mb_xy = mb_x + mb_y*h->mb.i_mb_stride;
                 if( h->param.rc.i_aq_mode == X264_AQ_AUTOVARIANCE_BIASED )
                 {
                     qp_adj = frame->f_qp_offset[mb_xy];
-                    qp_adj = strength * (qp_adj - avg_adj) + bias_strength * (1.f - 14.f / (qp_adj * qp_adj));
+                    qp_adj_d = h->param.rc.f_aq_dark * qty * (1.f - 14.f / (qp_adj * qp_adj));
+                    qp_adj = strength * qty * (qp_adj - avg_adj) + qp_adj_d;
+                    qp_adj_s = strength * (qp_adj - avg_adj);
                 }
                 else if( h->param.rc.i_aq_mode == X264_AQ_AUTOVARIANCE )
                 {
@@ -393,13 +400,64 @@ void x264_adaptive_quant_frame( x264_t *h, x264_frame_t *frame, float *quant_off
                     uint32_t energy = ac_energy_mb( h, mb_x, mb_y, frame );
                     qp_adj = strength * (x264_log2( X264_MAX(energy, 1) ) - (14.427f + 2*(BIT_DEPTH-8)));
                 }
-                if( quant_offsets )
+                if( quant_offsets ) 
+                {
                     qp_adj += quant_offsets[mb_xy];
+                    qp_adj_d += quant_offsets[mb_xy];
+                    qp_adj_s += quant_offsets[mb_xy];
+                }
                 frame->f_qp_offset[mb_xy] =
                 frame->f_qp_offset_aq[mb_xy] = qp_adj;
+                frame->f_qp_offset_aq_d[mb_xy] = qp_adj_d;
+                frame->f_qp_offset_aq_s[mb_xy] = qp_adj_s;
+                frame->avg_qp += qp_adj;
+                avg_qp_d += qp_adj_d;
                 if( h->frames.b_have_lowres )
                     frame->i_inv_qscale_factor[mb_xy] = x264_exp2fix8(qp_adj);
             }
+        if ( h->param.rc.i_aq_mode == X264_AQ_AUTOVARIANCE_BIASED )
+        {
+            frame->avg_qp /= h->mb.i_mb_count;
+            avg_qp_d /= h->mb.i_mb_count;
+            if ( avg_qp_d < 0)
+            {
+                double avg_qp_den = 0;
+                double avg_qp_d_den = 0;
+                double avg_qp_d_adapted = avg_qp_d;
+                if ( h->param.rc.f_aq_adapt > 0 )
+                    avg_qp_den = 24.f * h->param.rc.f_aq_adapt / ((-1.f * frame->avg_qp) + 5.f);
+                else
+                    avg_qp_den = 1.f;
+                if ( h->param.rc.f_aq_dark_adapt > 0 )
+                    avg_qp_d_den = 26.f * h->param.rc.f_aq_dark_adapt / (-1.f * avg_qp_d);
+                else
+                    avg_qp_d_den = 1.f;
+                if ( avg_qp_den < 1)
+                    avg_qp_den = 1.f;
+                if ( avg_qp_d_den < 1)
+                    avg_qp_d_den = 1.f;
+                avg_qp_d_adapted = 0;
+                for( int mb_y = 0; mb_y < h->mb.i_mb_height; mb_y++ )
+                    for( int mb_x = 0; mb_x < h->mb.i_mb_width; mb_x++ )
+                    { 
+                        int mb_xy = mb_x + mb_y*h->mb.i_mb_stride;
+                        avg_qp_d_adapted += frame->f_qp_offset_aq_d[mb_xy] / avg_qp_d_den + (frame->f_qp_offset_aq[mb_xy] - frame->f_qp_offset_aq_d[mb_xy]) / 2.f;
+                        frame->f_qp_offset_aq[mb_xy] = ((frame->f_qp_offset_aq[mb_xy] - frame->f_qp_offset_aq_d[mb_xy]) / avg_qp_den) + frame->f_qp_offset_aq_d[mb_xy] / avg_qp_d_den;
+                        frame->f_qp_offset_aq_d[mb_xy] /= avg_qp_d_den;
+                        if ( h->param.rc.f_aq_dark_adapt_qp > 0 || h->param.rc.f_aq_adapt_qp > 0)
+                            frame->f_qp_offset_aq[mb_xy] += frame->avg_qp * h->param.rc.f_aq_adapt_qp + avg_qp_d * h->param.rc.f_aq_dark_adapt_qp;
+                        if( h->param.rc.b_mb_tree && h->param.rc.f_mb_tree_aq != 0 )
+                            frame->f_qp_offset_aq[mb_xy] /= 1.f + (frame->f_qp_offset_tree / QP_MAX * (10.f * (h->param.rc.f_mb_tree_aq > 0 ? h->param.rc.f_mb_tree_aq / 10.f : h->param.rc.f_mb_tree_aq)));
+                    }
+                avg_qp_d_adapted /= h->mb.i_mb_count;
+                float bias_qty = 30 - qty * (30 - h->param.i_bframe_bias);
+                float bias_aq_qty = 0 - qty * (0 - h->param.i_bframe_bias_aq);
+                if(avg_qp_d_adapted < 0)
+                    frame->bias_aq = (int)(bias_aq_qty - ((-100 / (avg_qp_d_adapted - 1.f)) * (bias_aq_qty - bias_qty) / 100));
+                else
+                    frame->bias_aq = 0;
+            }
+        }
     }
 
     /* Remove mean from SSD calculation */
@@ -760,7 +818,7 @@ int x264_ratecontrol_new( x264_t *h )
 
     if( h->param.rc.b_mb_tree )
     {
-        h->param.rc.f_pb_factor = 1;
+        /* h->param.rc.f_pb_factor = 1; */
         rc->qcompress = 1;
     }
     else
@@ -1520,6 +1578,40 @@ void x264_ratecontrol_start( x264_t *h, int i_force_qp, int overhead )
     if( i_force_qp != X264_QP_AUTO )
         q = i_force_qp - 1;
 
+    if( h->sh.i_type != SLICE_TYPE_B)
+    {
+        if (q > h->param.analyse.i_psy_end)
+        {
+            h->fdec->quality = (float)(1.f - (q - h->param.analyse.i_psy_end) / ((h->param.rc.i_qp_max + h->param.analyse.i_psy_end) / 2.f - h->param.analyse.i_psy_end));
+            h->fdec->quality = h->fdec->quality > 0 ? h->fdec->quality : 0;
+        }
+        else
+            h->fdec->quality = 1.f;
+        if( !(h->fdec->quality > 0) )
+            h->fdec->quality = 0.01;
+    }
+    static int n_bf = 0;
+    const float qty = h->fdec->quality > 0 ? h->fdec->quality : 1.f;
+    int chroma_offset = h->param.analyse.i_chroma_qp_offset;
+    if( chroma_offset < 12)
+        h->param.analyse.i_chroma_qp_offset_d = chroma_offset + (chroma_offset > 0 ? 12 - chroma_offset : 12) * (1.f - qty);
+    if( h->sh.i_type == SLICE_TYPE_B && h->param.rc.f_pb_dynamic > 0 )
+    {
+        n_bf += 1;
+        float factor_pb = h->param.rc.f_pb_factor + ((float)rc->bframes / 16.f * (h->param.rc.f_pb_dynamic - h->param.rc.f_pb_factor));
+        if(h->param.rc.f_pb_low > factor_pb)
+            factor_pb += (h->param.rc.f_pb_low - factor_pb) * (1.f-qty);
+        q *= ((factor_pb / h->param.rc.f_pb_factor) - 1.f) / 5.f + 1.f;
+        rc->pb_factor_aq = 1.f - ((1.f - h->param.rc.f_aq_b_factor) * (factor_pb / h->param.rc.f_pb_factor));
+        factor_pb = (factor_pb + h->param.rc.f_pb_center) / 2.f;
+        rc->pb_factor_aq = (((-2.f) * (float)abs(n_bf - rc->bframes / 2.f - 0.5) * (factor_pb - h->param.rc.f_aq_b_factor)) / rc->bframes) + factor_pb;
+    } else {
+        n_bf = 0;
+        rc->pb_factor_aq = h->param.rc.f_aq_b_factor;
+    }
+    if ( h->param.rc.f_frameboost_reduce > 0 && (h->sh.i_type == SLICE_TYPE_B || h->sh.i_type == SLICE_TYPE_P) )
+        q *= 1.f + h->param.rc.f_frameboost_reduce - (h->param.rc.f_frameboost_reduce * ((float)rc->bframes / (float)h->param.i_bframe));
+
     q = x264_clip3f( q, h->param.rc.i_qp_min, h->param.rc.i_qp_max );
 
     rc->qpa_rc = rc->qpa_rc_prev =
@@ -1752,8 +1844,12 @@ int x264_ratecontrol_mb_qp( x264_t *h )
     float qp = h->rc->qpm;
     if( h->param.rc.i_aq_mode )
     {
-         /* MB-tree currently doesn't adjust quantizers in unreferenced frames. */
+        /* MB-tree currently doesn't adjust quantizers in unreferenced frames. */
         float qp_offset = h->fdec->b_kept_as_ref ? h->fenc->f_qp_offset[h->mb.i_mb_xy] : h->fenc->f_qp_offset_aq[h->mb.i_mb_xy];
+        if( h->param.rc.i_aq_mode == X264_AQ_AUTOVARIANCE_BIASED && (h->sh.i_type == SLICE_TYPE_B || (h->param.rc.f_aq_b_factor < 1 && h->sh.i_type == SLICE_TYPE_I)) )
+        {
+            qp_offset = h->fdec->b_kept_as_ref ? h->fenc->f_qp_offset[h->mb.i_mb_xy] - h->fenc->f_qp_offset_aq[h->mb.i_mb_xy] * (1.f - 1.f / h->rc->pb_factor_aq) - h->fenc->f_qp_offset_aq_d[h->mb.i_mb_xy] * (1.f - 1.f / h->param.rc.f_pb_dark) : h->fenc->f_qp_offset_aq[h->mb.i_mb_xy] * (1.f / h->rc->pb_factor_aq) - h->fenc->f_qp_offset_aq_d[h->mb.i_mb_xy] * (1.f - 1.f / h->param.rc.f_pb_dark);
+        }
         /* Scale AQ's effect towards zero in emergency mode. */
         if( qp > QP_MAX_SPEC )
             qp_offset *= (QP_MAX - qp) / (QP_MAX - QP_MAX_SPEC);
@@ -1836,6 +1932,18 @@ int x264_ratecontrol_end( x264_t *h, int bits, int *filler )
 
     h->fdec->f_qp_avg_rc = rc->qpa_rc /= h->mb.i_mb_count;
     h->fdec->f_qp_avg_aq = (float)rc->qpa_aq / h->mb.i_mb_count;
+    if( h->sh.i_type != SLICE_TYPE_B)
+    {
+        if (h->fdec->f_qp_avg_aq > h->param.analyse.i_psy_end)
+        {
+            h->fdec->quality_boost = (float)(1.f - (h->fdec->f_qp_avg_aq - h->param.analyse.i_psy_end) / ((h->param.rc.i_qp_max + h->param.analyse.i_psy_end) / 2.f - h->param.analyse.i_psy_end));
+            h->fdec->quality_boost = h->fdec->quality_boost > 0 ? h->fdec->quality_boost : 0;
+        }
+        else
+            h->fdec->quality_boost = 1.f;
+        if( !(h->fdec->quality_boost > 0) )
+            h->fdec->quality_boost = 0.01;
+    }
     h->fdec->f_crf_avg = h->param.rc.f_rf_constant + h->fdec->f_qp_avg_rc - rc->qp_novbv;
 
     if( h->param.rc.b_stat_write )
@@ -2003,7 +2111,10 @@ static double get_qscale(x264_t *h, ratecontrol_entry_t *rce, double rate_factor
     if( h->param.rc.b_mb_tree )
     {
         double timescale = (double)h->sps->vui.i_num_units_in_tick / h->sps->vui.i_time_scale;
-        q = pow( BASE_FRAME_DURATION / CLIP_DURATION(rce->i_duration * timescale), 1 - h->param.rc.f_qcompress );
+        float qcomp_b = h->param.rc.f_qcompress;
+        if ( h->param.rc.f_frameboost != 0 )
+            qcomp_b += (qcomp_b - 0.01) * (h->rc->bframes / 16.f) * h->param.rc.f_frameboost;
+        q = pow( BASE_FRAME_DURATION / CLIP_DURATION(rce->i_duration * timescale), 1 - qcomp_b );
     }
     else
         q = pow( rce->blurred_complexity, 1 - rcc->qcompress );
@@ -2559,6 +2670,14 @@ static float rate_estimate_qscale( x264_t *h )
 
             if( h->param.rc.i_rc_method == X264_RC_CRF )
             {
+                float qcomp_b = h->param.rc.f_qcompress;
+                if ( h->param.rc.f_frameboost != 0 )
+                {
+                    qcomp_b += (qcomp_b - 0.01) * (h->rc->bframes / 16.f) * h->param.rc.f_frameboost;
+                    double base_cplx = h->mb.i_mb_count * (h->param.i_bframe ? 120 : 80);
+                    double mbtree_offset = h->param.rc.b_mb_tree ? (1.0-qcomp_b)*13.5 : 0;
+                    rcc->rate_factor_constant = pow( base_cplx, 1 - rcc->qcompress ) / qp2qscale( h->param.rc.f_rf_constant + mbtree_offset + QP_BD_OFFSET );
+                }
                 q = get_qscale( h, &rce, rcc->rate_factor_constant, h->fenc->i_frame );
             }
             else
@@ -2588,7 +2707,7 @@ static float rate_estimate_qscale( x264_t *h )
                 /* should test _next_ pict type, but that isn't decided yet */
                 && rcc->last_non_b_pict_type != SLICE_TYPE_I )
             {
-                q = qp2qscale( rcc->accum_p_qp / rcc->accum_p_norm );
+                q = rcc->last_qscale_for[SLICE_TYPE_P];
                 q /= h->param.rc.f_ip_factor;
             }
             else if( h->i_frame > 0 )

@@ -1,7 +1,7 @@
 /*****************************************************************************
  * x264: top-level x264cli functions
  *****************************************************************************
- * Copyright (C) 2003-2022 x264 project
+ * Copyright (C) 2003-2023 x264 project
  *
  * Authors: Loren Merritt <lorenm@u.washington.edu>
  *          Laurent Aimar <fenrir@via.ecp.fr>
@@ -631,21 +631,9 @@ static void help( x264_param_t *defaults, int longhelp )
         "                                    --slow-firstpass --no-fast-pskip\n"
         "                                    --me tesa --merange 24 --partitions all\n"
         "                                    --rc-lookahead 60 --ref 16 --subme 11\n"
-        "                                    --trellis 2\n"
-        "                                  - rlslow:\n"
-        "                                    --bframes 4 --b-adapt 2 --direct auto\n"
-        "                                    --slow-firstpass --me umh --merange 32\n"
-        "                                    --partitions all --rc-lookahead 40 --ref 4\n"
-        "                                    --subme 9 --trellis 2 --aq-strength 0.8\n"
-        "                                  - anslow:\n"
-        "                                    --bframes 4 --b-adapt 2 --direct auto\n"
-        "                                    --slow-firstpass --me umh --merange 28\n"
-        "                                    --partitions all --rc-lookahead 40 --ref 4\n"
-        "                                    --subme 8 --trellis 2 --aq-strength 0.6\n"
-        "                                    --aq-mode 3 --psy-rd 0.6\n" 		);
+        "                                    --trellis 2\n" );
     else H0( "                                  - ultrafast,superfast,veryfast,faster,fast\n"
-             "                                  - medium,slow,slower,veryslow,placebo\n"
-			 "			- nfmain,nfhigh,rlslow,anslow\n" 	);
+             "                                  - medium,slow,slower,veryslow,placebo\n" );
     H0( "      --tune <string>         Tune the settings for a particular type of source\n"
         "                              or situation\n"
         "                                  Overridden by user settings.\n"
@@ -1191,6 +1179,17 @@ static struct option long_options[] =
     { "input-range",          required_argument, NULL, OPT_INPUT_RANGE },
     { "stitchable",           no_argument,       NULL, 0 },
     { "filler",               no_argument,       NULL, 0 },
+    { "b-bias-aq",            required_argument, NULL, 0 },
+    { "dynamic_psy",          no_argument,       NULL, 0 },
+    { "psy-end",              required_argument, NULL, 0 },
+    { "aq-psy",               required_argument, NULL, 0 },
+    { "aq-dark",              required_argument, NULL, 0 },
+    { "aq-adapt",             required_argument, NULL, 0 },
+    { "aq-b-factor",          required_argument, NULL, 0 },
+    { "pb-dynamic",           required_argument, NULL, 0 },
+    { "mbtree-strength",      required_argument, NULL, 0 },
+    { "mbtree-curve",         required_argument, NULL, 0 },
+    { "frameboost",           required_argument, NULL, 0 },
     { NULL,                   0,                 NULL, 0 }
 };
 

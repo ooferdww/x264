@@ -1,7 +1,7 @@
 /*****************************************************************************
  * set: header writing
  *****************************************************************************
- * Copyright (C) 2003-2022 x264 project
+ * Copyright (C) 2003-2023 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
@@ -494,7 +494,7 @@ void x264_pps_init( x264_pps_t *pps, int i_id, x264_param_t *param, x264_sps_t *
     pps->i_pic_init_qp = param->rc.i_rc_method == X264_RC_ABR || param->b_stitchable ? 26 + QP_BD_OFFSET : SPEC_QP( param->rc.i_qp_constant );
     pps->i_pic_init_qs = 26 + QP_BD_OFFSET;
 
-    pps->i_chroma_qp_index_offset = param->analyse.i_chroma_qp_offset;
+    pps->i_chroma_qp_index_offset = param->analyse.i_chroma_qp_offset_d;
     pps->b_deblocking_filter_control = 1;
     pps->b_constrained_intra_pred = param->b_constrained_intra;
     pps->b_redundant_pic_cnt = 0;
@@ -607,8 +607,8 @@ int x264_sei_version_write( x264_t *h, bs_t *s )
     CHECKED_MALLOC( payload, 200 + strlen( opts ) );
 
     memcpy( payload, uuid, 16 );
-    sprintf( payload, "x264 - core %d%s - H.264/MPEG-4 AVC codec - "
-             "Copy%s 2003-2022 - http://www.videolan.org/x264.html",
+    sprintf( payload+16, "x264 - core %d%s - H.264/MPEG-4 AVC codec - "
+             "Copy%s 2003-2023 - http://www.videolan.org/x264.html - options: %s",
              X264_BUILD, X264_VERSION, HAVE_GPL?"left":"right", opts );
     length = strlen(payload)+1;
 

@@ -1,7 +1,7 @@
 /*****************************************************************************
  * x264.h: x264 public header
  *****************************************************************************
- * Copyright (C) 2003-2022 x264 project
+ * Copyright (C) 2003-2023 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
@@ -357,6 +357,7 @@ typedef struct x264_param_t
     int         i_bframe;   /* how many b-frame between 2 references pictures */
     int         i_bframe_adaptive;
     int         i_bframe_bias;
+    int         i_bframe_bias_aq;
     int         i_bframe_pyramid;   /* Keep some B-frames as references: 0=off, 1=strict hierarchical, 2=normal */
     int         b_open_gop;
     int         b_bluray_compat;
@@ -402,6 +403,7 @@ typedef struct x264_param_t
         int          b_weighted_bipred; /* implicit weighting for B-frames */
         int          i_direct_mv_pred; /* spatial vs temporal mv prediction */
         int          i_chroma_qp_offset;
+        int          i_chroma_qp_offset_d;
 
         int          i_me_method; /* motion estimation algorithm to use (X264_ME_*) */
         int          i_me_range; /* integer pixel motion estimation search range (from predicted mv) */
@@ -417,6 +419,11 @@ typedef struct x264_param_t
         float        f_psy_rd; /* Psy RD strength */
         float        f_psy_trellis; /* Psy trellis strength */
         int          b_psy; /* Toggle all psy optimizations */
+        float        f_dynamic_psy;
+        int          i_dynamic_psy_aq;
+        int          i_dynamic_psy_bf;
+        int          i_dynamic_trellis;
+        int          i_psy_end;
 
         int          b_mb_info;            /* Use input mb_info data in x264_picture_t */
         int          b_mb_info_update; /* Update the values in mb_info according to the results of encoding. */
@@ -447,6 +454,9 @@ typedef struct x264_param_t
         float       f_vbv_buffer_init; /* <=1: fraction of buffer_size. >1: kbit */
         float       f_ip_factor;
         float       f_pb_factor;
+        float       f_pb_dynamic;
+        float       f_pb_low;
+        float       f_pb_center;
 
         /* VBV filler: force CBR VBV and use filler bytes to ensure hard-CBR.
          * Implied by NAL-HRD CBR. */
@@ -454,7 +464,25 @@ typedef struct x264_param_t
 
         int         i_aq_mode;      /* psy adaptive QP. (X264_AQ_*) */
         float       f_aq_strength;
+        float       f_aq_psy;
+        float       f_aq_psy_dark;
+        float       f_aq_dark;
+        float       f_aq_adapt;
+        float       f_aq_dark_adapt;
+        float       f_aq_adapt_qp;
+        float       f_aq_adapt_tree;
+        float       f_aq_dark_adapt_qp;
+        float       f_aq_b_factor;
+        float       f_pb_dark;
+        float       f_frameboost;
+        float       f_frameboost_reduce;
         int         b_mb_tree;      /* Macroblock-tree ratecontrol. */
+        float       f_mb_tree_curve;
+        float       f_mb_tree_psy;
+        float       f_mb_tree_aq;
+        float       f_mb_curve_low;
+        float       f_mb_tree_drop;
+        float       f_mb_tree_low;
         int         i_lookahead;
 
         /* 2pass */
@@ -465,6 +493,9 @@ typedef struct x264_param_t
 
         /* 2pass params (same as ffmpeg ones) */
         float       f_qcompress;    /* 0.0 => cbr, 1.0 => constant qp */
+        float       f_mb_tree_strength;
+        float       f_mb_tree_kf;
+        float       f_mb_tree_all;
         float       f_qblur;        /* temporally blur quants */
         float       f_complexity_blur; /* temporally blur complexity */
         x264_zone_t *zones;         /* ratecontrol overrides */
@@ -690,7 +721,7 @@ X264_API void x264_param_cleanup( x264_param_t *param );
  *      (either can be NULL, which implies no preset or no tune, respectively)
  *
  *      Currently available presets are, ordered from fastest to slowest: */
-static const char * const x264_preset_names[] = { "ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo", "nfmain", "nfhigh", "rlslow", "anslow", 0 };
+static const char * const x264_preset_names[] = { "ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo", 0 };
 
 /*      The presets can also be indexed numerically, as in:
  *      x264_param_default_preset( &param, "3", ... )
