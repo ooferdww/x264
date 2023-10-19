@@ -1,7 +1,7 @@
 /*****************************************************************************
  * frame.c: frame handling
  *****************************************************************************
- * Copyright (C) 2003-2022 x264 project
+ * Copyright (C) 2003-2023 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
@@ -218,11 +218,17 @@ static x264_frame_t *frame_new( x264_t *h, int b_fdec )
             for( int j = 0; j <= h->param.i_bframe+1; j++ )
                 for( int i = 0; i <= h->param.i_bframe+1; i++ )
                     PREALLOC( frame->lowres_costs[j][i], i_mb_count * sizeof(uint16_t) );
+
+            /* mbtree asm can overread the input buffers, make sure we don't read outside of allocated memory. */
+            prealloc_size += NATIVE_ALIGN;
         }
         if( h->param.rc.i_aq_mode )
         {
             PREALLOC( frame->f_qp_offset, i_mb_count * sizeof(float) );
             PREALLOC( frame->f_qp_offset_aq, i_mb_count * sizeof(float) );
+            PREALLOC( frame->f_qp_offset_aq_d, i_mb_count * sizeof(float) );
+            PREALLOC( frame->f_qp_offset_aq_s, i_mb_count * sizeof(float) );
+            PREALLOC( frame->f_qp_offset_mbtree, i_mb_count * sizeof(float) );
             if( h->frames.b_have_lowres )
                 PREALLOC( frame->i_inv_qscale_factor, i_mb_count * sizeof(uint16_t) );
         }

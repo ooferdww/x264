@@ -1,7 +1,7 @@
 /*****************************************************************************
  * frame.h: frame handling
  *****************************************************************************
- * Copyright (C) 2003-2022 x264 project
+ * Copyright (C) 2003-2023 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
@@ -131,6 +131,10 @@ typedef struct x264_frame
     float   *f_row_qscale;
     float   *f_qp_offset;
     float   *f_qp_offset_aq;
+    float   *f_qp_offset_aq_d;
+    float   *f_qp_offset_aq_s;
+    float   *f_qp_offset_mbtree;
+    float   f_qp_offset_tree;
     int     b_intra_calculated;
     uint16_t *i_intra_cost;
     uint16_t *i_propagate_cost;
@@ -176,6 +180,11 @@ typedef struct x264_frame
     /* user frame properties */
     uint8_t *mb_info;
     void (*mb_info_free)( void* );
+
+    int bias_aq;
+    float quality;
+    float quality_boost;
+    float avg_qp;
 
 #if HAVE_OPENCL
     x264_frame_opencl_t opencl;
