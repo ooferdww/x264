@@ -1435,6 +1435,7 @@ static int validate_parameters( x264_t *h, int b_open )
     BOOLIFY( rc.b_stat_write );
     BOOLIFY( rc.b_stat_read );
     BOOLIFY( rc.b_mb_tree );
+    BOOLIFY( sei_writeinfo );
     BOOLIFY( rc.b_filler );
 #undef BOOLIFY
 
