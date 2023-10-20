@@ -373,6 +373,7 @@ typedef struct x264_param_t
 
     int         b_interlaced;
     int         b_constrained_intra;
+    int         b_info_write;
 
     int         i_cqm_preset;
     char        *psz_cqm_file;      /* filename (in UTF-8) of CQM file, JM format */
@@ -477,7 +478,6 @@ typedef struct x264_param_t
         float       f_frameboost;
         float       f_frameboost_reduce;
         int         b_mb_tree;      /* Macroblock-tree ratecontrol. */
-        int         sei_writeinfo;
         float       f_mb_tree_curve;
         float       f_mb_tree_psy;
         float       f_mb_tree_aq;

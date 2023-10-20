@@ -590,7 +590,7 @@ void x264_sei_recovery_point_write( x264_t *h, bs_t *s, int recovery_frame_cnt )
     x264_sei_write( s, tmp_buf, bs_pos( &q ) / 8, SEI_RECOVERY_POINT );
 }
 
-int x264_sei_version_write( x264_t *h, bs_t *s )
+int x264_sei_version_write(x264_t* h, bs_t* s)
 {
     // random ID number generated according to ISO-11578
     static const uint8_t uuid[16] =
@@ -598,24 +598,25 @@ int x264_sei_version_write( x264_t *h, bs_t *s )
         0xdc, 0x45, 0xe9, 0xbd, 0xe6, 0xd9, 0x48, 0xb7,
         0x96, 0x2c, 0xd8, 0x20, 0xd9, 0x23, 0xee, 0xef
     };
-    char *opts = x264_param2string( &h->param, 0 );
-    char *payload;
+    char* opts = x264_param2string(&h->param, 0);
+    char* payload;
     int length;
 
-    if( !opts )
+    if (!opts)
         return -1;
-    CHECKED_MALLOC( payload, 200 + strlen( opts ) );
+    CHECKED_MALLOC(payload, 200 + strlen(opts));
 
-    memcpy( payload, uuid, 16 );
-    if( h->param.sei_writeinfo == 1 )
+    memcpy(payload, uuid, 16);
+    if (h->param.b_info_write == 1)
     {
-    sprintf( payload+16, "x264 - core %d%s - H.264/MPEG-4 AVC codec - "
-             "Copy%s 2003-2023 - http://www.videolan.org/x264.html - options: %s",
-             X264_BUILD, X264_VERSION, HAVE_GPL?"left":"right", opts );
-    } else {
-        sprintf( payload, "x264 - core %d%s - H.264/MPEG-4 AVC codec - "
-                 "Copy%s 2003-2023 - http://www.videolan.org/x264.html",
-                 X264_BUILD, X264_VERSION, HAVE_GPL?"left":"right", opts );
+        sprintf(payload + 16, "x264 - core %d%s - H.264/MPEG-4 AVC codec - "
+            "Copy%s 2003-2023 - http://www.videolan.org/x264.html - options: %s",
+            X264_BUILD, X264_VERSION, HAVE_GPL ? "left" : "right", opts);
+    }
+    else {
+        sprintf(payload, "x264 - core %d%s - H.264/MPEG-4 AVC codec - "
+            "Copy%s 2003-2023 - http://www.videolan.org/x264.html",
+            X264_BUILD, X264_VERSION, HAVE_GPL ? "left" : "right", opts);
     }
     length = strlen(payload)+1;
 

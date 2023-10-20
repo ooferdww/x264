@@ -392,6 +392,7 @@ REALIGN_STACK void x264_param_default( x264_param_t *param )
     param->i_bframe_pyramid = X264_B_PYRAMID_NORMAL;
     param->b_interlaced = 0;
     param->b_constrained_intra = 0;
+    param->b_info_write = 1;
 
     param->b_deblocking_filter = 1;
     param->i_deblocking_filter_alphac0 = 1;
@@ -450,8 +451,6 @@ REALIGN_STACK void x264_param_default( x264_param_t *param )
     param->rc.f_mb_tree_drop = 0.01;
     param->rc.f_mb_curve_low = 0.15;
     param->rc.f_mb_tree_low = 0;
-
-    param->sei_writeinfo = 1;
 
     /* Log */
     param->pf_log = x264_log_default;
@@ -1431,7 +1430,7 @@ REALIGN_STACK int x264_param_parse( x264_param_t *p, const char *name, const cha
     OPT("mbtree")
         p->rc.b_mb_tree = atobool(value);
     OPT("info")
-	p->sei_writeinfo = atobool(value);
+        p->b_info_write = atobool(value);
     OPT("mbtree-strength")
         b_error |= sscanf( value, "%f,%f,%f,%f", &p->rc.f_mb_tree_strength, &p->rc.f_mb_tree_kf, &p->rc.f_mb_tree_all, &p->rc.f_mb_tree_aq ) != 4;
     OPT("mbtree-curve")
@@ -1562,6 +1561,7 @@ char *x264_param2string( x264_param_t *p, int b_res )
     s += sprintf( s, " decimate=%d", p->analyse.b_dct_decimate );
     s += sprintf( s, " interlaced=%s", p->b_interlaced ? p->b_tff ? "tff" : "bff" : p->b_fake_interlaced ? "fake" : "0" );
     s += sprintf( s, " bluray_compat=%d", p->b_bluray_compat );
+    s += sprintf( s, " info=%d", p->b_info_write );
     if( p->b_stitchable )
         s += sprintf( s, " stitchable=%d", p->b_stitchable );
 
