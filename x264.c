@@ -937,6 +937,8 @@ static void help( x264_param_t *defaults, int longhelp )
     H2( "      --ratetol <float>       Tolerance of ABR ratecontrol and VBV [%.1f]\n", defaults->rc.f_rate_tolerance );
     H2( "      --ipratio <float>       QP factor between I and P [%.2f]\n", defaults->rc.f_ip_factor );
     H2( "      --pbratio <float>       QP factor between P and B [%.2f]\n", defaults->rc.f_pb_factor );
+    H2( "      --no-info               Don't write settings to SEI\n"                                );
+    H2( "      --mbtree-strength       Strength of macroblock tree\n"                                );
     H2( "      --chroma-qp-offset <integer>  QP difference between chroma and luma [%d]\n", defaults->analyse.i_chroma_qp_offset );
     H2( "      --aq-mode <integer>     AQ method [%d]\n"
         "                                  - 0: Disabled\n"
@@ -1405,6 +1407,8 @@ static struct option long_options[] =
     { "bff",                  no_argument,       NULL, OPT_INTERLACED },
     { "no-interlaced",        no_argument,       NULL, OPT_INTERLACED },
     { "constrained-intra",    no_argument,       NULL, 0 },
+    { "info",                 no_argument,       NULL, 0 },
+    { "no-info",              no_argument,       NULL, 0 },
     { "cabac",                no_argument,       NULL, 0 },
     { "no-cabac",             no_argument,       NULL, 0 },
     { "qp",                   required_argument, NULL, 'q' },
@@ -1490,6 +1494,7 @@ static struct option long_options[] =
     { "stats",                required_argument, NULL, 0 },
     { "qcomp",                required_argument, NULL, 0 },
     { "mbtree",               no_argument,       NULL, 0 },
+    { "mbtree-strength",      required_argument, NULL, 0 },
     { "no-mbtree",            no_argument,       NULL, 0 },
     { "qblur",                required_argument, NULL, 0 },
     { "cplxblur",             required_argument, NULL, 0 },

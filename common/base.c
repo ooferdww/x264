@@ -5,6 +5,8 @@
  *
  * Authors: Loren Merritt <lorenm@u.washington.edu>
  *          Laurent Aimar <fenrir@via.ecp.fr>
+ *          ooferdww <REDACTED>
+ *          porcino <REDACTED>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -422,6 +424,7 @@ REALIGN_STACK void x264_param_default( x264_param_t *param )
     param->i_bframe_pyramid = X264_B_PYRAMID_NORMAL;
     param->b_interlaced = 0;
     param->b_constrained_intra = 0;
+    param->b_info = 1;
 
     param->b_deblocking_filter = 1;
     param->i_deblocking_filter_alphac0 = 0;
@@ -1776,6 +1779,8 @@ REALIGN_STACK int x264_param_parse( x264_param_t *p, const char *name, const cha
         p->rc.b_mb_tree = atobool(value);
     OPT("mbtree-strength")
         p->rc.f_mb_tree_strength = atof(value);
+    OPT("info")
+        p->b_info = atobool(value);
     OPT("qblur")
         p->rc.f_qblur = atof(value);
     OPT2("cplxblur", "cplx-blur")
@@ -1934,6 +1939,7 @@ char *x264_param2string( x264_param_t *p, int b_res )
 
     s += sprintf( s, " constrained_intra=%d", p->b_constrained_intra );
     s += sprintf( s, " fgo=%d", p->analyse.i_fgo );
+    s += sprintf( s, " info=%d", p->b_info );
 
     s += sprintf( s, " bframes=%d", p->i_bframe );
     if( p->i_bframe )
@@ -1957,8 +1963,8 @@ char *x264_param2string( x264_param_t *p, int b_res )
     s += sprintf( s, " rc=%s mbtree=%d", p->rc.i_rc_method == X264_RC_ABR ?
                                ( p->rc.b_stat_read ? "2pass" : p->rc.i_vbv_max_bitrate == p->rc.i_bitrate ? "cbr" : "abr" )
                                : p->rc.i_rc_method == X264_RC_CRF ? "crf" : "cqp", p->rc.b_mb_tree );
-	if( p->rc.b_mb_tree )
-        s += sprintf( s, " mbtree-strength=%.2f", p->rc.f_mb_tree_strength );
+    if (p->rc.b_mb_tree)
+        s += sprintf(s, " mbtree-strength=%.2f", p->rc.f_mb_tree_strength);
     if( p->rc.i_rc_method == X264_RC_ABR || p->rc.i_rc_method == X264_RC_CRF )
     {
         if( p->rc.i_rc_method == X264_RC_CRF )

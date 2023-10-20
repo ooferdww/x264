@@ -632,32 +632,18 @@ int x264_sei_version_write( x264_t *h, bs_t *s )
     CHECKED_MALLOC( payload, length );
 
     memcpy( payload, uuid, 16 );
-    if( !h->param.i_opts_write )
-        *(payload + offset) = '\0';
-    else
+    if (h->param.b_info == 1)
     {
-        if( h->param.i_opts_write & X264_OPTS_PREINFO )
-            offset += sprintf( payload + offset,
-                               ( h->param.i_opts_write & X264_OPTS_INFO ) ? "%s " : "%s",
-                               h->param.psz_opts[0] );
-        if( h->param.i_opts_write & X264_OPTS_INFO )
-            offset += sprintf( payload + offset, "x264 - core %d%s - H.264/MPEG-4 AVC codec - "
-                               "Copy%s 2003-2023 - http://www.videolan.org/x264.html",
-                               X264_BUILD, X264_VERSION, HAVE_GPL?"left":"right" );
-        if( h->param.i_opts_write & X264_OPTS_POSTINFO )
-            offset += sprintf( payload + offset, " %s", h->param.psz_opts[1] );
-        if( h->param.i_opts_write & ( X264_OPTS_PREOPT | X264_OPTS_SETTING | X264_OPTS_POSTOPT ) )
-        {
-            offset += sprintf( payload + offset, " - options:" );
-            if( h->param.i_opts_write & X264_OPTS_PREOPT )
-                offset += sprintf( payload + offset, " %s", h->param.psz_opts[2] );
-            if( h->param.i_opts_write & X264_OPTS_SETTING )
-                offset += sprintf( payload + offset, " %s", opts );
-            if( h->param.i_opts_write & X264_OPTS_POSTOPT )
-                offset += sprintf( payload + offset, " %s", h->param.psz_opts[3] );
-        }
+        sprintf(payload + 16, "x264 - core %d%s - H.264/MPEG-4 AVC codec - "
+            "Copy%s 2003-2023 - http://www.videolan.org/x264.html - options: %s",
+            X264_BUILD, X264_VERSION, HAVE_GPL ? "left" : "right", opts);
     }
-	length = strlen(payload)+1;
+    else {
+        sprintf(payload, "x264 - core %d%s - H.264/MPEG-4 AVC codec - "
+            "Copy%s 2003-2023 - http://www.videolan.org/x264.html",
+            X264_BUILD, X264_VERSION, HAVE_GPL ? "left" : "right", opts);
+    }
+    length = strlen(payload) + 1;
 
     x264_sei_write( s, (uint8_t *)payload, length, SEI_USER_DATA_UNREGISTERED );
 

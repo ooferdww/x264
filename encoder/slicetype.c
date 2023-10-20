@@ -1037,10 +1037,10 @@ static void macroblock_tree_finish( x264_t *h, x264_frame_t *frame, float averag
      * concepts are very similar. */
     float strength = 5.0f;
     float tree_avg = 0.0f;
-    for( int mb_index = 0; mb_index < h->mb.i_mb_count; mb_index++ )
+    for (int mb_index = 0; mb_index < h->mb.i_mb_count; mb_index++)
     {
         int intra_cost = (frame->i_intra_cost[mb_index] * frame->i_inv_qscale_factor[mb_index] + 128) >> 8;
-        if( intra_cost )
+        if (intra_cost)
         {
             int propagate_cost = (frame->i_propagate_cost[mb_index] * fps_factor + 128) >> 8;
             float log2_ratio = x264_log2(intra_cost + propagate_cost) - x264_log2(intra_cost) + weightdelta;
