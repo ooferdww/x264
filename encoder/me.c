@@ -355,8 +355,8 @@ void x264_me_search_ref( x264_t *h, x264_me_t *m, int16_t (*mvc)[2], int i_mvc, 
                 COPY1_IF_LT(bcost, (costs[3] << 4) + 12);
                 if (!(bcost & 15))
                     break;
-                bmx -= (int32_t)((uint32_t)bcost << 28) >> 30;
-                bmy -= (int32_t)((uint32_t)bcost << 30) >> 30;
+                bmx -= (bcost << 28) >> 30;
+                bmy -= (bcost << 30) >> 30;
                 bcost &= ~15;
             } while (--i && CHECK_MVRANGE(bmx, bmy));
             bcost >>= 4;
@@ -438,96 +438,6 @@ void x264_me_search_ref( x264_t *h, x264_me_t *m, int16_t (*mvc)[2], int i_mvc, 
 
         case X264_ME_UMH:
         {
-            /* diamond search, radius 1 */
-            bcost <<= 4;
-            int i = i_me_range;
-            do
-            {
-                COST_MV_X4_DIR(0, -1, 0, 1, -1, 0, 1, 0, costs);
-                COPY1_IF_LT(bcost, (costs[0] << 4) + 1);
-                COPY1_IF_LT(bcost, (costs[1] << 4) + 3);
-                COPY1_IF_LT(bcost, (costs[2] << 4) + 4);
-                COPY1_IF_LT(bcost, (costs[3] << 4) + 12);
-                if (!(bcost & 15))
-                    break;
-                bmx -= (int32_t)((uint32_t)bcost << 28) >> 30;
-                bmy -= (int32_t)((uint32_t)bcost << 30) >> 30;
-                bcost &= ~15;
-            } while (--i && CHECK_MVRANGE(bmx, bmy));
-            bcost >>= 4;
-        me_hex2:
-            /* hexagon search, radius 2 */
-#if 0
-            for (int i = 0; i < i_me_range / 2; i++)
-            {
-                omx = bmx; omy = bmy;
-                COST_MV(omx - 2, omy);
-                COST_MV(omx - 1, omy + 2);
-                COST_MV(omx + 1, omy + 2);
-                COST_MV(omx + 2, omy);
-                COST_MV(omx + 1, omy - 2);
-                COST_MV(omx - 1, omy - 2);
-                if (bmx == omx && bmy == omy)
-                    break;
-                if (!CHECK_MVRANGE(bmx, bmy))
-                    break;
-            }
-#else
-        /* equivalent to the above, but eliminates duplicate candidates */
-
-        /* hexagon */
-            COST_MV_X3_DIR(-2, 0, -1, 2, 1, 2, costs);
-            COST_MV_X3_DIR(2, 0, 1, -2, -1, -2, costs + 4); /* +4 for 16-byte alignment */
-            bcost <<= 3;
-            COPY1_IF_LT(bcost, (costs[0] << 3) + 2);
-            COPY1_IF_LT(bcost, (costs[1] << 3) + 3);
-            COPY1_IF_LT(bcost, (costs[2] << 3) + 4);
-            COPY1_IF_LT(bcost, (costs[4] << 3) + 5);
-            COPY1_IF_LT(bcost, (costs[5] << 3) + 6);
-            COPY1_IF_LT(bcost, (costs[6] << 3) + 7);
-
-            if (bcost & 7)
-            {
-                int dir = (bcost & 7) - 2;
-                bmx += hex2[dir + 1][0];
-                bmy += hex2[dir + 1][1];
-
-                /* half hexagon, not overlapping the previous iteration */
-                for (int i = (i_me_range >> 1) - 1; i > 0 && CHECK_MVRANGE(bmx, bmy); i--)
-                {
-                    COST_MV_X3_DIR(hex2[dir + 0][0], hex2[dir + 0][1],
-                        hex2[dir + 1][0], hex2[dir + 1][1],
-                        hex2[dir + 2][0], hex2[dir + 2][1],
-                        costs);
-                    bcost &= ~7;
-                    COPY1_IF_LT(bcost, (costs[0] << 3) + 1);
-                    COPY1_IF_LT(bcost, (costs[1] << 3) + 2);
-                    COPY1_IF_LT(bcost, (costs[2] << 3) + 3);
-                    if (!(bcost & 7))
-                        break;
-                    dir += (bcost & 7) - 2;
-                    dir = mod6m1[dir + 1];
-                    bmx += hex2[dir + 1][0];
-                    bmy += hex2[dir + 1][1];
-                }
-            }
-            bcost >>= 3;
-#endif
-            /* square refine */
-            bcost <<= 4;
-            COST_MV_X4_DIR(0, -1, 0, 1, -1, 0, 1, 0, costs);
-            COPY1_IF_LT(bcost, (costs[0] << 4) + 1);
-            COPY1_IF_LT(bcost, (costs[1] << 4) + 2);
-            COPY1_IF_LT(bcost, (costs[2] << 4) + 3);
-            COPY1_IF_LT(bcost, (costs[3] << 4) + 4);
-            COST_MV_X4_DIR(-1, -1, -1, 1, 1, -1, 1, 1, costs);
-            COPY1_IF_LT(bcost, (costs[0] << 4) + 5);
-            COPY1_IF_LT(bcost, (costs[1] << 4) + 6);
-            COPY1_IF_LT(bcost, (costs[2] << 4) + 7);
-            COPY1_IF_LT(bcost, (costs[3] << 4) + 8);
-            bmx += square1[bcost & 15][0];
-            bmy += square1[bcost & 15][1];
-            bcost >>= 4;
             /* Uneven-cross Multi-Hexagon-grid Search
              * as in JM, except with different early termination */
 
