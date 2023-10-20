@@ -1,7 +1,7 @@
 /*****************************************************************************
  * x264.h: x264 public header
  *****************************************************************************
- * Copyright (C) 2003-2022 x264 project
+ * Copyright (C) 2003-2023 x264 project
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
@@ -45,7 +45,7 @@ extern "C" {
 
 #include "x264_config.h"
 
-#define X264_BUILD 148
+#define X264_BUILD 164
 
 #ifdef _WIN32
 #   define X264_DLL_IMPORT __declspec(dllimport)
@@ -181,6 +181,10 @@ typedef struct x264_nal_t
 /* MIPS */
 #define X264_CPU_MSA             0x0000001U  /* MIPS MSA */
 
+/* LOONGARCH */
+#define X264_CPU_LSX             0x0000001U  /* LOONGARCH LSX */
+#define X264_CPU_LASX            0x0000002U  /* LOONGARCH LASX */
+
 /* Analyse flags */
 #define X264_ANALYSE_I4x4       0x0001U  /* Analyse i4x4 */
 #define X264_ANALYSE_I8x8       0x0002U  /* Analyse i8x8 (requires 8x8 transform) */
@@ -208,6 +212,10 @@ typedef struct x264_nal_t
 #define X264_AQ_VARIANCE             1
 #define X264_AQ_AUTOVARIANCE         2
 #define X264_AQ_AUTOVARIANCE_BIASED  3
+#define X264_AQ_ORE                  1
+#define X264_AQ_MIXORE               2
+#define X264_AQ_ORE_2                3
+#define X264_AQ_MIXORE_2             4
 #define X264_B_ADAPT_NONE            0
 #define X264_B_ADAPT_FAST            1
 #define X264_B_ADAPT_TRELLIS         2
@@ -219,6 +227,7 @@ typedef struct x264_nal_t
 #define X264_B_PYRAMID_NORMAL        2
 #define X264_KEYINT_MIN_AUTO         0
 #define X264_KEYINT_MAX_INFINITE     (1<<30)
+#define X264_LEVEL_IDC_AUTO          (-1)
 
 /* AVC-Intra flavors */
 #define X264_AVCINTRA_FLAVOR_PANASONIC 0
@@ -238,6 +247,7 @@ static const char * const x264_colmatrix_names[] = { "GBR", "bt709", "undef", ""
                                                      "smpte2085", "chroma-derived-nc", "chroma-derived-c", "ICtCp", 0 };
 static const char * const x264_nal_hrd_names[] = { "none", "vbr", "cbr", 0 };
 static const char * const x264_avcintra_flavor_names[] = { "panasonic", "sony", 0 };
+static const char * const x264_log_level_names[] = { "none", "error", "warning", "info", "debug", 0 };
 
 /* Colorspace type */
 #define X264_CSP_MASK           0x00ff  /* */
@@ -261,6 +271,7 @@ static const char * const x264_avcintra_flavor_names[] = { "panasonic", "sony", 
 #define X264_CSP_MAX            0x0011  /* end of list */
 #define X264_CSP_VFLIP          0x1000  /* the csp is vertically flipped */
 #define X264_CSP_HIGH_DEPTH     0x2000  /* the csp has a depth of 16 bits per pixel component */
+#define X264_CSP_SKIP_DEPTH_FILTER 0x0100  /* HACK: totally skips depth filter to prevent dither error */
 
 /* Slice type */
 #define X264_TYPE_AUTO          0x0000  /* Let x264 choose the right type */
@@ -289,6 +300,19 @@ static const char * const x264_avcintra_flavor_names[] = { "panasonic", "sony", 
 #define X264_NAL_HRD_VBR             1
 #define X264_NAL_HRD_CBR             2
 
+/* SEI level */
+#define X264_OPTS_NONE          0x0000
+#define X264_OPTS_INFO          0x0001
+#define X264_OPTS_SETTING       0x0002
+#define X264_OPTS_FULL          0x0003
+
+#define X264_OPTS_PREINFO       0x0010
+#define X264_OPTS_POSTINFO      0x0020
+#define X264_OPTS_PREOPT        0x0040
+#define X264_OPTS_POSTOPT       0x0080
+
+#define X264_OPTS_MAX                4
+
 /* Zones: override ratecontrol or other options for specific sections of the video.
  * See x264_encoder_reconfig() for which options can be changed.
  * If zones overlap, whichever comes later in the list takes precedence. */
@@ -300,6 +324,54 @@ typedef struct x264_zone_t
     float f_bitrate_factor;
     struct x264_param_t *param;
 } x264_zone_t;
+
+/* Auto VBV*/
+#define X264_VBV_MAXRATE_HIGH444 -5 /* Set the VBV maxrate to fit in the target level of High 4:4:4 Predictive Profile */
+#define X264_VBV_MAXRATE_HIGH422 -4 /* Set the VBV maxrate to fit in the target level of High 4:2:2 Profile */
+#define X264_VBV_MAXRATE_HIGH10  -3 /* Set the VBV maxrate to fit in the target level of High 10 Profile */
+#define X264_VBV_MAXRATE_HIGH    -2 /* Set the VBV maxrate to fit in the target level of High Profile */
+#define X264_VBV_MAXRATE_MAIN    -1 /* Set the VBV maxrate to fit in the target level of Main Profile */
+#define X264_VBV_BUFSIZE_HIGH444 -5 /* Set the VBV bufsize to fit in the target level of High 4:4:4 Predictive Profile */
+#define X264_VBV_BUFSIZE_HIGH422 -4 /* Set the VBV bufsize to fit in the target level of High 4:2:2 Profile */
+#define X264_VBV_BUFSIZE_HIGH10  -3 /* Set the VBV bufsize to fit in the target level of High 10 Profile */
+#define X264_VBV_BUFSIZE_HIGH    -2 /* Set the VBV bufsize to fit in the target level of High Profile */
+#define X264_VBV_BUFSIZE_MAIN    -1 /* Set the VBV bufsize to fit in the target level of Main Profile */
+
+/* Device capability */
+#define X264_LEVEL_IDC_DXVA         41
+#define X264_LEVEL_IDC_BLURAY       41
+#define X264_LEVEL_IDC_PSP          30 /* Actually the latest firmware supports Level 5.2, thus not restricted */
+#define X264_LEVEL_IDC_PSV          31 /* Actually the latest firmware supports Level 5.2, thus not restricted */
+#define X264_LEVEL_IDC_PS3          42
+#define X264_LEVEL_IDC_XBOX         41
+#define X264_LEVEL_IDC_IPHONE       41
+#define X264_LEVEL_IDC_GENERIC      30
+#define X264_VBV_MAXRATE_BLURAY  40000 /* Vbv restriction is taken from MeGUI */
+#define X264_VBV_BUFSIZE_BLURAY  30000
+#define X264_VBV_MAXRATE_PSP     10000
+#define X264_VBV_BUFSIZE_PSP     10000
+#define X264_VBV_MAXRATE_PS3     31250
+#define X264_VBV_BUFSIZE_PS3     31250
+#define X264_VBV_MAXRATE_XBOX    24000
+#define X264_VBV_BUFSIZE_XBOX    24000
+#define X264_VBV_MAXRATE_GENERIC 10000
+#define X264_VBV_BUFSIZE_GENERIC 10000
+
+/* Device mask */
+#define X264_DEVICE_HIGH_DEPTH 0x0001 /* Device supports high bit depth */
+#define X264_DEVICE_422        0x0002 /* Device supports 4:2:2 */
+#define X264_DEVICE_444        0x0004 /* Device supports 4:4:4 */
+#define X264_DEVICE_LOSSLESS   0x0008 /* Device supports lossless */
+#define X264_DEVICE_LEVEL_FREE 0x0010 /* Device has no level force */
+
+#define X264_DEVICE_DXVA    0x0000
+#define X264_DEVICE_BLURAY  0x0000
+#define X264_DEVICE_PSP     0x0000
+#define X264_DEVICE_PSV     0x0000
+#define X264_DEVICE_PS3     0x0000
+#define X264_DEVICE_XBOX    0x0000
+#define X264_DEVICE_IPHONE  0x0000
+#define X264_DEVICE_GENERIC 0x0000
 
 typedef struct x264_param_t
 {
@@ -318,6 +390,9 @@ typedef struct x264_param_t
     int         i_csp;         /* CSP of encoded bitstream */
     int         i_bitdepth;
     int         i_level_idc;
+    int         b_level_force; /* force ref etc. for level */
+    int         i_profile;
+    int         b_profile_force; /* do not automatically decrease profile settings even if not needed */
     int         i_frame_total; /* number of frames to encode if known, else 0 */
 
     /* NAL HRD
@@ -388,7 +463,10 @@ typedef struct x264_param_t
     void        (*pf_log)( void *, int i_level, const char *psz, va_list );
     void        *p_log_private;
     int         i_log_level;
+    int         i_log_file_level;
+    char        *psz_log_file;
     int         b_full_recon;   /* fully reconstruct frames, even when not necessary for encoding.  Implied by psz_dump_yuv */
+	int         b_stylish;
     char        *psz_dump_yuv;  /* filename (in UTF-8) for reconstructed frames */
 
     /* Encoder analyser parameters */
@@ -414,6 +492,7 @@ typedef struct x264_param_t
         int          b_fast_pskip; /* early SKIP detection on P-frames */
         int          b_dct_decimate; /* transform coefficient thresholding on P-frames */
         int          i_noise_reduction; /* adaptive pseudo-deadzone */
+        int          i_fgo; /* psy film grain optimization */
         float        f_psy_rd; /* Psy RD strength */
         float        f_psy_trellis; /* Psy trellis strength */
         int          b_psy; /* Toggle all psy optimizations */
@@ -434,8 +513,10 @@ typedef struct x264_param_t
         int         i_rc_method;    /* X264_RC_* */
 
         int         i_qp_constant;  /* 0=lossless */
-        int         i_qp_min;       /* min allowed QP value */
-        int         i_qp_max;       /* max allowed QP value */
+        int         i_qp_min[3];    /* min allowed QP value of I:P:B slices */
+        int         i_qp_max[3];    /* max allowed QP value of I:P:B slices */
+        int         i_qp_min_min;   /* min allowed QP value */
+        int         i_qp_max_max;   /* max allowed QP value */
         int         i_qp_step;      /* max QP step between frames */
 
         int         i_bitrate;
@@ -454,6 +535,27 @@ typedef struct x264_param_t
 
         int         i_aq_mode;      /* psy adaptive QP. (X264_AQ_*) */
         float       f_aq_strength;
+        float       f_aq_bias_strength; /* Fine-tune AQ mode 3 dark bias. */
+        float       f_aq_sensitivity;
+        float       f_aq_ifactor;
+        float       f_aq_pfactor;
+        float       f_aq_bfactor;
+        int         b_aq2;          /* psy 2nd adaptive QP */
+        float       f_aq2_strength;
+        float       f_aq2_sensitivity;
+        float       f_aq2_ifactor;
+        float       f_aq2_pfactor;
+        float       f_aq2_bfactor;
+        int         i_aq3_mode;      /* psy 3rd adaptive QP */
+        float       f_aq3_strength;
+        float       f_aq3_strengths[2][4];   /* Up{ Bright, Middle, Dark, M.Dark }, Down{ Bright, Middle, Dark, Other stuff } */
+        float       f_aq3_sensitivity;
+        float       f_aq3_ifactor[2]; /* { Up, Down } */
+        float       f_aq3_pfactor[2]; /* { Up, Down } */
+        float       f_aq3_bfactor[2]; /* { Up, Down } */
+        int         b_aq3_boundary;
+        int         i_aq3_boundary[3];
+        float       f_fade_compensate; /* Give more bits to fades. */
         int         b_mb_tree;      /* Macroblock-tree ratecontrol. */
         int         i_lookahead;
 
@@ -524,8 +626,11 @@ typedef struct x264_param_t
     int b_pulldown;             /* use explicitly set timebase for CFR */
     uint32_t i_fps_num;
     uint32_t i_fps_den;
+	int b_accurate_fps;
     uint32_t i_timebase_num;    /* Timebase numerator */
     uint32_t i_timebase_den;    /* Timebase denominator */
+    int i_opts_write;
+    char *psz_opts[X264_OPTS_MAX];
 
     int b_tff;
 
@@ -566,6 +671,11 @@ typedef struct x264_param_t
     int i_slice_count;       /* Number of slices per frame: forces rectangular slices. */
     int i_slice_count_max;   /* Absolute cap on slices per frame; stops applying slice-max-size
                               * and slice-max-mbs if this is reached. */
+    /* Filters */
+    struct
+    {
+        int b_sub;           /* Load subtitles or not */
+    } filters;
 
     /* Optional callback for freeing this x264_param_t when it is done being used.
      * Only used when the x264_param_t sits in memory for an indefinite period of time,
@@ -690,7 +800,7 @@ X264_API void x264_param_cleanup( x264_param_t *param );
  *      (either can be NULL, which implies no preset or no tune, respectively)
  *
  *      Currently available presets are, ordered from fastest to slowest: */
-static const char * const x264_preset_names[] = { "ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo", "nfmain", "nfhigh", "rlslow", "anslow", 0 };
+static const char * const x264_preset_names[] = { "ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo", 0 };
 
 /*      The presets can also be indexed numerically, as in:
  *      x264_param_default_preset( &param, "3", ... )
@@ -730,8 +840,7 @@ static const char * const x264_profile_names[] = { "baseline", "main", "high", "
  *      decrease them.
  *
  *      returns 0 on success, negative on failure (e.g. invalid profile name). */
-X264_API int x264_param_apply_profile( x264_param_t *, const char *profile );
-
+X264_API int x264_param_apply_profile( x264_param_t *, const char *profile, const char *device );
 /****************************************************************************
  * Picture structures and functions
  ****************************************************************************/
@@ -869,6 +978,9 @@ typedef struct x264_picture_t
     /* Out: whether this frame is a keyframe.  Important when using modes that result in
      * SEI recovery points being used instead of IDR frames. */
     int     b_keyframe;
+    /* Out: identifier for pictures. The recovery point is specified as frame_num increment of
+     * the recovery point from the frame having the SEI. */
+    int     i_frame_num;
     /* In: user pts, Out: pts of encoded picture (user)*/
     int64_t i_pts;
     /* Out: frame dts. When the pts of the first frame is close to zero,
