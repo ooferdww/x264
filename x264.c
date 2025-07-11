@@ -10,6 +10,7 @@
  *          Kieran Kunhya <kieran@kunhya.com>
  *          Henrik Gramner <henrik@gramner.com>
  *			Vladimir Kontserenko <djatom@beatrice-raws.org>
+ *			oofer_dww
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -808,6 +809,9 @@ static void help( x264_param_t *defaults, int longhelp )
         "                                  - esa: exhaustive search\n"
         "                                  - tesa: hadamard exhaustive search (slow)\n" );
     else H1( "                                  - dia, hex, umh\n" );
+    H2( "      --dex                   In hexagon search, performs diamond prior to hexagon.\n"
+        "                              This performs vertical search not performed by hexagon with\n"
+        "                              very little speed penalty.\n" );
     H2( "      --merange <integer>     Maximum motion vector search range [%d]\n", defaults->analyse.i_me_range );
     H2( "      --mvrange <integer>     Maximum motion vector length [-1 (auto)]\n" );
     H2( "      --mvrange-thread <int>  Minimum buffer between threads [-1 (auto)]\n" );
@@ -931,6 +935,7 @@ static void help( x264_param_t *defaults, int longhelp )
     H1( "      --input-res <intxint>   Specify input resolution (width x height)\n" );
     H1( "      --index <string>        Filename for input index file\n" );
     H0( "      --sar width:height      Specify Sample Aspect Ratio\n" );
+    H0( "      --no-info               Don't write information about settings used in encode\n" );
     H0( "      --fps <float|rational>  Specify framerate\n" );
     H0( "      --seek <integer>        First frame to encode\n" );
     H0( "      --frames <integer>      Maximum number of frames to encode\n" );
@@ -1090,6 +1095,8 @@ static struct option long_options[] =
     { "no-weightb",           no_argument,       NULL, 0 },
     { "weightp",              required_argument, NULL, 0 },
     { "me",                   required_argument, NULL, 0 },
+    { "dex",                  no_argument,       NULL, 0 },
+    { "no-dex",               no_argument,       NULL, 0 },
     { "merange",              required_argument, NULL, 0 },
     { "mvrange",              required_argument, NULL, 0 },
     { "mvrange-thread",       required_argument, NULL, 0 },
@@ -1170,6 +1177,8 @@ static struct option long_options[] =
     { "transfer",             required_argument, NULL, 0 },
     { "colormatrix",          required_argument, NULL, 0 },
     { "chromaloc",            required_argument, NULL, 0 },
+    { "info",                 no_argument,       NULL, 0 },
+    { "no-info",              no_argument,       NULL, 0 },
     { "force-cfr",            no_argument,       NULL, 0 },
     { "tcfile-in",            required_argument, NULL, OPT_TCFILE_IN },
     { "tcfile-out",           required_argument, NULL, OPT_TCFILE_OUT },

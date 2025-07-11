@@ -5,6 +5,7 @@
  *
  * Authors: Loren Merritt <lorenm@u.washington.edu>
  *          Laurent Aimar <fenrir@via.ecp.fr>
+ *			oofer_dww
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -366,6 +367,7 @@ REALIGN_STACK void x264_param_default( x264_param_t *param )
     param->vui.i_transfer  = 2;  /* undef */
     param->vui.i_colmatrix = -1; /* default depends on input */
     param->vui.i_chroma_loc= 0;  /* left center */
+    param->i_info          = 1;
     param->i_fps_num       = 25;
     param->i_fps_den       = 1;
     param->i_level_idc     = -1;
@@ -414,6 +416,7 @@ REALIGN_STACK void x264_param_default( x264_param_t *param )
     param->rc.f_pb_factor = 1.3;
     param->rc.i_aq_mode = X264_AQ_VARIANCE;
     param->rc.f_aq_strength = 1.0;
+    param->b_open_gop = 1;
     param->rc.i_lookahead = 40;
 
     param->rc.b_stat_write = 0;
@@ -437,6 +440,7 @@ REALIGN_STACK void x264_param_default( x264_param_t *param )
                          | X264_ANALYSE_PSUB16x16 | X264_ANALYSE_BSUB16x16;
     param->analyse.i_direct_mv_pred = X264_DIRECT_PRED_SPATIAL;
     param->analyse.i_me_method = X264_ME_HEX;
+    param->i_dex = 1;
     param->analyse.f_psy_rd = 1.0;
     param->analyse.b_psy = 1;
     param->analyse.f_psy_trellis = 0;
@@ -446,7 +450,7 @@ REALIGN_STACK void x264_param_default( x264_param_t *param )
     param->analyse.b_chroma_me = 1;
     param->analyse.i_mv_range_thread = -1;
     param->analyse.i_mv_range = -1; // set from level_idc
-    param->analyse.i_chroma_qp_offset = 0;
+    param->analyse.i_chroma_qp_offset = -1;
     param->analyse.b_fast_pskip = 1;
     param->analyse.b_weighted_bipred = 1;
     param->analyse.i_weighted_pred = X264_WEIGHTP_SMART;
@@ -1015,6 +1019,8 @@ REALIGN_STACK int x264_param_parse( x264_param_t *p, const char *name, const cha
         p->vui.i_chroma_loc = atoi(value);
         b_error |= ( p->vui.i_chroma_loc < 0 || p->vui.i_chroma_loc > 5 );
     }
+    OPT("info")
+        p->i_info = atobool(value);
     OPT("mastering-display")
     {
         if( strcasecmp( value, "undef" ) )
@@ -1263,6 +1269,8 @@ REALIGN_STACK int x264_param_parse( x264_param_t *p, const char *name, const cha
         p->analyse.i_chroma_qp_offset = atoi(value);
     OPT("me")
         b_error |= parse_enum( value, x264_motion_est_names, &p->analyse.i_me_method );
+    OPT("dex")
+        p->i_dex = atobool(value);
     OPT2("merange", "me-range")
         p->analyse.i_me_range = atoi(value);
     OPT2("mvrange", "mv-range")
@@ -1446,11 +1454,16 @@ char *x264_param2string( x264_param_t *p, int b_res )
     if( p->b_opencl )
         s += sprintf( s, "opencl=%d ", p->b_opencl );
     s += sprintf( s, "cabac=%d", p->b_cabac );
+    s += sprintf( s, " info=%d", p->i_info );
     s += sprintf( s, " ref=%d", p->i_frame_reference );
     s += sprintf( s, " deblock=%d:%d:%d", p->b_deblocking_filter,
                   p->i_deblocking_filter_alphac0, p->i_deblocking_filter_beta );
     s += sprintf( s, " analyse=%#x:%#x", p->analyse.intra, p->analyse.inter );
     s += sprintf( s, " me=%s", x264_motion_est_names[ p->analyse.i_me_method ] );
+    if (p->analyse.i_me_method == X264_ME_HEX)
+    {
+    s += sprintf( s, " dex=%d", p->i_dex );
+    }
     s += sprintf( s, " subme=%d", p->analyse.i_subpel_refine );
     s += sprintf( s, " psy=%d", p->analyse.b_psy );
     if( p->analyse.b_psy )
@@ -1511,7 +1524,7 @@ char *x264_param2string( x264_param_t *p, int b_res )
     if( p->rc.i_rc_method == X264_RC_ABR || p->rc.i_rc_method == X264_RC_CRF )
     {
         if( p->rc.i_rc_method == X264_RC_CRF )
-            s += sprintf( s, " crf=%.1f", p->rc.f_rf_constant );
+            s += sprintf( s, " crf=%.2f", p->rc.f_rf_constant );
         else
             s += sprintf( s, " bitrate=%d ratetol=%.1f",
                           p->rc.i_bitrate, p->rc.f_rate_tolerance );

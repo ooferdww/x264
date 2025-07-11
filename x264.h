@@ -6,6 +6,7 @@
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
  *          Fiona Glaser <fiona@x264.com>
+ *			oofer_dww
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -380,6 +381,8 @@ typedef struct x264_param_t
 
     int         b_interlaced;
     int         b_constrained_intra;
+    int         i_info;
+    int         i_dex;
 
     int         i_cqm_preset;
     char        *psz_cqm_file;      /* filename (in UTF-8) of CQM file, JM format */

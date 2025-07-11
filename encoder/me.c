@@ -6,6 +6,7 @@
  * Authors: Loren Merritt <lorenm@u.washington.edu>
  *          Laurent Aimar <fenrir@via.ecp.fr>
  *          Fiona Glaser <fiona@x264.com>
+ *			oofer_dww
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -343,6 +344,26 @@ void x264_me_search_ref( x264_t *h, x264_me_t *m, int16_t (*mvc)[2], int i_mvc, 
 
         case X264_ME_HEX:
         {
+            if (h->param.i_dex == 1)
+			{
+			/* diamond search, radius 1 */
+            bcost <<= 4;
+            int i = i_me_range;
+            do
+            {
+                COST_MV_X4_DIR( 0,-1, 0,1, -1,0, 1,0, costs );
+                COPY1_IF_LT( bcost, (costs[0]<<4)+1 );
+                COPY1_IF_LT( bcost, (costs[1]<<4)+3 );
+                COPY1_IF_LT( bcost, (costs[2]<<4)+4 );
+                COPY1_IF_LT( bcost, (costs[3]<<4)+12 );
+                if( !(bcost&15) )
+                    break;
+                bmx -= (int32_t)((uint32_t)bcost<<28)>>30;
+                bmy -= (int32_t)((uint32_t)bcost<<30)>>30;
+                bcost &= ~15;
+            } while( --i && CHECK_MVRANGE(bmx, bmy) );
+            bcost >>= 4;
+			}
     me_hex2:
             /* hexagon search, radius 2 */
     #if 0

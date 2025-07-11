@@ -5,6 +5,7 @@
  *
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
+ *			oofer_dww
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -607,9 +608,17 @@ int x264_sei_version_write( x264_t *h, bs_t *s )
     CHECKED_MALLOC( payload, 200 + strlen( opts ) );
 
     memcpy( payload, uuid, 16 );
+    if (h->param.i_info == 1)
+	{
     sprintf( payload+16, "x264 - core %d%s - H.264/MPEG-4 AVC codec - "
              "Copy%s 2003-2025 - http://www.videolan.org/x264.html - options: %s",
              X264_BUILD, X264_VERSION, HAVE_GPL?"left":"right", opts );
+	}
+	else {
+	sprintf( payload, "x264 - core %d%s - H.264/MPEG-4 AVC codec - "
+             "Copy%s 2003-2025 - http://www.videolan.org/x264.html",
+             X264_BUILD, X264_VERSION, HAVE_GPL?"left":"right", opts );
+	}
     length = strlen(payload)+1;
 
     x264_sei_write( s, (uint8_t *)payload, length, SEI_USER_DATA_UNREGISTERED );
