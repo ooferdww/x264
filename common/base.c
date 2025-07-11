@@ -456,7 +456,7 @@ REALIGN_STACK void x264_param_default( x264_param_t *param )
     param->analyse.i_weighted_pred = X264_WEIGHTP_SMART;
     param->analyse.b_dct_decimate = 1;
     param->analyse.b_transform_8x8 = 1;
-    param->analyse.i_trellis = 1;
+    param->analyse.i_trellis = 2;
     param->analyse.i_luma_deadzone[0] = 21;
     param->analyse.i_luma_deadzone[1] = 11;
     param->analyse.b_psnr = 0;
