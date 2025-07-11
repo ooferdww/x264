@@ -9,6 +9,7 @@
  *          Fiona Glaser <fiona@x264.com>
  *          Kieran Kunhya <kieran@kunhya.com>
  *          Henrik Gramner <henrik@gramner.com>
+ *			Vladimir Kontserenko <djatom@beatrice-raws.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -192,6 +193,9 @@ const char * const x264_demuxer_names[] =
     "auto", "raw", "y4m",
 #if HAVE_AVS
     "avs",
+#endif
+#if HAVE_VPY
+    "vpy",
 #endif
 #if HAVE_LAVF
     "lavf",
@@ -493,6 +497,7 @@ static void help( x264_param_t *defaults, int longhelp )
         "Infile can be raw (in which case resolution is required),\n"
         "  or YUV4MPEG (*.y4m),\n"
         "  or Avisynth if compiled with support (%s).\n"
+        "  or VapourSynth if compiled with support (%s).\n"
         "  or libav* formats if compiled with lavf support (%s) or ffms support (%s).\n"
         "Outfile type is selected by filename:\n"
         " .264 -> Raw bytestream\n"
@@ -509,6 +514,11 @@ static void help( x264_param_t *defaults, int longhelp )
         "\n",
         X264_BUILD, X264_VERSION,
 #if HAVE_AVS
+        "yes",
+#else
+        "no",
+#endif
+#if HAVE_VPY
         "yes",
 #else
         "no",
@@ -902,6 +912,7 @@ static void help( x264_param_t *defaults, int longhelp )
         "                                  - %s\n", x264_muxer_names[0], stringify_names( buf, x264_muxer_names ) );
     H1( "      --demuxer <string>      Specify input container format [\"%s\"]\n"
         "                                  - %s\n", x264_demuxer_names[0], stringify_names( buf, x264_demuxer_names ) );
+    H1( "      --synth-lib <string>    Load external avisynth/vapoursynth library from given full path\n" );
     H1( "      --input-fmt <string>    Specify input file format (requires lavf support)\n" );
     H1( "      --input-csp <string>    Specify input colorspace format for raw input\n" );
     print_csp_names( longhelp );
@@ -1009,7 +1020,8 @@ typedef enum
     OPT_DTS_COMPRESSION,
     OPT_OUTPUT_CSP,
     OPT_INPUT_RANGE,
-    OPT_RANGE
+    OPT_RANGE,
+	OPT_FRAMESERVER_LIB
 } OptionsOPT;
 
 static char short_options[] = "8A:B:b:f:hI:i:m:o:p:q:r:t:Vvw";
@@ -1181,6 +1193,7 @@ static struct option long_options[] =
     { "dts-compress",         no_argument,       NULL, OPT_DTS_COMPRESSION },
     { "output-csp",           required_argument, NULL, OPT_OUTPUT_CSP },
     { "input-range",          required_argument, NULL, OPT_INPUT_RANGE },
+    { "synth-lib",            required_argument, NULL, OPT_FRAMESERVER_LIB },
     { "stitchable",           no_argument,       NULL, 0 },
     { "filler",               no_argument,       NULL, 0 },
     { NULL,                   0,                 NULL, 0 }
@@ -1255,6 +1268,15 @@ static int select_input( const char *demuxer, char *used_demuxer, char *filename
         return -1;
 #endif
     }
+    else if( !strcasecmp( module, "vpy" ) ) {
+#if HAVE_VPY
+        cli_input = vpy_input;
+        module = "vpy";
+#else
+        x264_cli_log( "x264", X264_LOG_ERROR, "not compiled with VPY input support\n" );
+        return -1;
+#endif
+    }
     else if( !strcasecmp( module, "y4m" ) )
         cli_input = y4m_input;
     else if( !strcasecmp( module, "raw" ) || !strcasecmp( ext, "yuv" ) )
@@ -1286,6 +1308,15 @@ static int select_input( const char *demuxer, char *used_demuxer, char *filename
             module = "avs";
             b_auto = 0;
             cli_input = avs_input;
+        }
+#endif
+#if HAVE_VPY
+        if( b_regular && (b_auto || !strcasecmp( demuxer, "vpy" )) &&
+            !vpy_input.open_file( filename, p_handle, info, opt ) )
+        {
+            module = "vpy";
+            b_auto = 0;
+            cli_input = vpy_input;
         }
 #endif
         if( b_auto && !raw_input.open_file( filename, p_handle, info, opt ) )
@@ -1581,6 +1612,9 @@ static int parse( int argc, char **argv, x264_param_t *param, cli_opt_t *opt )
             case OPT_RANGE:
                 FAIL_IF_ERROR( parse_enum_value( optarg, x264_range_names, &param->vui.b_fullrange ), "Unknown range `%s'\n", optarg );
                 input_opt.output_range = param->vui.b_fullrange += RANGE_AUTO;
+                break;
+            case OPT_FRAMESERVER_LIB:
+                input_opt.frameserver_lib_path = optarg;
                 break;
             default:
 generic_option:

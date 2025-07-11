@@ -6,6 +6,7 @@
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
  *          Steven Walters <kemuri9@gmail.com>
+ * 			Vladimir Kontserenko <djatom@beatrice-raws.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -48,6 +49,7 @@ typedef struct
     int output_csp; /* convert to this csp, if applicable */
     int output_range; /* user desired output range */
     int input_range; /* user override input range */
+    char *frameserver_lib_path; /* path to external frameserver library */
 } cli_input_opt_t;
 
 /* properties of the source given by the demuxer */
@@ -102,6 +104,7 @@ typedef struct
 extern const cli_input_t raw_input;
 extern const cli_input_t y4m_input;
 extern const cli_input_t avs_input;
+extern const cli_input_t vpy_input;
 extern const cli_input_t thread_8_input;
 extern const cli_input_t thread_10_input;
 extern const cli_input_t lavf_input;
