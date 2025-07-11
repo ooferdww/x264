@@ -368,7 +368,7 @@ REALIGN_STACK void x264_param_default( x264_param_t *param )
     param->vui.i_colmatrix = -1; /* default depends on input */
     param->vui.i_chroma_loc= 0;  /* left center */
     param->i_info          = 1;
-    param->i_fps_num       = 25;
+    param->i_fps_num       = 24000/1001;
     param->i_fps_den       = 1;
     param->i_level_idc     = -1;
     param->i_slice_max_size = 0;
@@ -383,12 +383,12 @@ REALIGN_STACK void x264_param_default( x264_param_t *param )
 #endif
 
     /* Encoder parameters */
-    param->i_frame_reference = 3;
-    param->i_keyint_max = 250;
+    param->i_frame_reference = 4;
+    param->i_keyint_max = 240;
     param->i_keyint_min = X264_KEYINT_MIN_AUTO;
-    param->i_bframe = 3;
-    param->i_scenecut_threshold = 40;
-    param->i_bframe_adaptive = X264_B_ADAPT_FAST;
+    param->i_bframe = 16;
+    param->i_scenecut_threshold = 20;
+    param->i_bframe_adaptive = X264_B_ADAPT_TRELLIS;
     param->i_bframe_bias = 0;
     param->i_bframe_pyramid = X264_B_PYRAMID_NORMAL;
     param->b_interlaced = 0;
@@ -415,9 +415,9 @@ REALIGN_STACK void x264_param_default( x264_param_t *param )
     param->rc.f_ip_factor = 1.4;
     param->rc.f_pb_factor = 1.3;
     param->rc.i_aq_mode = X264_AQ_VARIANCE;
-    param->rc.f_aq_strength = 1.0;
+    param->rc.f_aq_strength = 0.8;
     param->b_open_gop = 1;
-    param->rc.i_lookahead = 40;
+    param->rc.i_lookahead = 120;
 
     param->rc.b_stat_write = 0;
     param->rc.psz_stat_out = "x264_2pass.log";
@@ -437,15 +437,15 @@ REALIGN_STACK void x264_param_default( x264_param_t *param )
     /* */
     param->analyse.intra = X264_ANALYSE_I4x4 | X264_ANALYSE_I8x8;
     param->analyse.inter = X264_ANALYSE_I4x4 | X264_ANALYSE_I8x8
-                         | X264_ANALYSE_PSUB16x16 | X264_ANALYSE_BSUB16x16;
-    param->analyse.i_direct_mv_pred = X264_DIRECT_PRED_SPATIAL;
-    param->analyse.i_me_method = X264_ME_HEX;
+                         | X264_ANALYSE_PSUB16x16 | X264_ANALYSE_BSUB16x16 | X264_ANALYSE_PSUB8x8;
+    param->analyse.i_direct_mv_pred = X264_DIRECT_PRED_AUTO;
+    param->analyse.i_me_method = X264_ME_UMH;
     param->i_dex = 1;
     param->analyse.f_psy_rd = 1.0;
     param->analyse.b_psy = 1;
     param->analyse.f_psy_trellis = 0;
-    param->analyse.i_me_range = 16;
-    param->analyse.i_subpel_refine = 7;
+    param->analyse.i_me_range = 32;
+    param->analyse.i_subpel_refine = 10;
     param->analyse.b_mixed_references = 1;
     param->analyse.b_chroma_me = 1;
     param->analyse.i_mv_range_thread = -1;

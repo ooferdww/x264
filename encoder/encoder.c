@@ -6,6 +6,7 @@
  * Authors: Laurent Aimar <fenrir@via.ecp.fr>
  *          Loren Merritt <lorenm@u.washington.edu>
  *          Fiona Glaser <fiona@x264.com>
+ *			oofer_dww
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -930,6 +931,7 @@ static int validate_parameters( x264_t *h, int b_open )
     if( b_open && (h->param.rc.i_rc_method == X264_RC_CQP || h->param.rc.i_rc_method == X264_RC_CRF)
         && h->param.rc.i_qp_constant == 0 )
     {
+		h->param.b_cabac = 1;
         h->mb.b_lossless = 1;
         h->param.i_cqm_preset = X264_CQM_FLAT;
         h->param.psz_cqm_file = NULL;
@@ -1208,6 +1210,8 @@ static int validate_parameters( x264_t *h, int b_open )
             x264_log( h, X264_LOG_WARNING, "--tune %s should be used if attempting to benchmark %s!\n", s, s );
     }
 
+	if (h->param.analyse.i_me_method == X264_ME_DIA || h->param.analyse.i_me_method == X264_ME_UMH || h->param.analyse.i_me_method == X264_ME_ESA || h->param.analyse.i_me_method == X264_ME_TESA)
+		h->param.i_dex = 0;
     if( !h->param.analyse.b_psy )
     {
         h->param.analyse.f_psy_rd = 0;
