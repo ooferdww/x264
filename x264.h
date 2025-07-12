@@ -383,6 +383,7 @@ typedef struct x264_param_t
     int         b_constrained_intra;
     int         i_info;
     int         i_dex;
+	int         i_exp;
 
     int         i_cqm_preset;
     char        *psz_cqm_file;      /* filename (in UTF-8) of CQM file, JM format */
@@ -476,6 +477,7 @@ typedef struct x264_param_t
 
         /* 2pass params (same as ffmpeg ones) */
         float       f_qcompress;    /* 0.0 => cbr, 1.0 => constant qp */
+        float       f_mb_tree_strength;
         float       f_qblur;        /* temporally blur quants */
         float       f_complexity_blur; /* temporally blur complexity */
         x264_zone_t *zones;         /* ratecontrol overrides */

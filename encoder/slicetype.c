@@ -6,6 +6,7 @@
  * Authors: Fiona Glaser <fiona@x264.com>
  *          Loren Merritt <lorenm@u.washington.edu>
  *          Dylan Yudaken <dyudaken@gmail.com>
+ *          porcino
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1031,11 +1032,31 @@ static void macroblock_tree_finish( x264_t *h, x264_frame_t *frame, float averag
     int fps_factor = round( CLIP_DURATION(average_duration) / CLIP_DURATION(frame->f_duration) * 256 / MBTREE_PRECISION );
     float weightdelta = 0.0;
     if( ref0_distance && frame->f_weighted_cost_delta[ref0_distance-1] > 0 )
+	{
         weightdelta = (1.0 - frame->f_weighted_cost_delta[ref0_distance-1]);
+	}
 
     /* Allow the strength to be adjusted via qcompress, since the two
      * concepts are very similar. */
-    float strength = 5.0f * (1.0f - h->param.rc.f_qcompress);
+	float strength = 5.0f * (1.0f - h->param.rc.f_qcompress);
+	
+	if( h->param.i_exp ) {
+    strength = 5.0f;
+    float tree_avg = 0.0f;
+    for( int mb_index = 0; mb_index < h->mb.i_mb_count; mb_index++ )
+    {
+        int intra_cost = (frame->i_intra_cost[mb_index] * frame->i_inv_qscale_factor[mb_index] + 128) >> 8;
+        if( intra_cost )
+        {
+            int propagate_cost = (frame->i_propagate_cost[mb_index] * fps_factor + 128) >> 8;
+            float log2_ratio = x264_log2(intra_cost + propagate_cost) - x264_log2(intra_cost) + weightdelta;
+            tree_avg += strength * log2_ratio;
+        }
+    }
+    tree_avg /= h->mb.i_mb_count;
+    strength = 5.0f * (h->param.rc.f_mb_tree_strength - (h->param.rc.f_mb_tree_strength / 4 / 5.0f * tree_avg));
+	}
+
     for( int mb_index = 0; mb_index < h->mb.i_mb_count; mb_index++ )
     {
         int intra_cost = (frame->i_intra_cost[mb_index] * frame->i_inv_qscale_factor[mb_index] + 128) >> 8;

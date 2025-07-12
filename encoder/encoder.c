@@ -7,6 +7,7 @@
  *          Loren Merritt <lorenm@u.washington.edu>
  *          Fiona Glaser <fiona@x264.com>
  *			oofer_dww
+ *          porcino
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1133,6 +1134,10 @@ static int validate_parameters( x264_t *h, int b_open )
         x264_log( h, X264_LOG_WARNING, "lookaheadless mb-tree requires intra refresh or infinite keyint\n" );
         h->param.rc.b_mb_tree = 0;
     }
+	if( h->param.i_exp )
+	{
+	    h->param.rc.f_mb_tree_strength = x264_clip3f( h->param.rc.f_mb_tree_strength, 0.0, 1.0 );
+	}
     if( b_open && h->param.rc.b_stat_read )
         h->param.rc.i_lookahead = 0;
 #if HAVE_THREAD

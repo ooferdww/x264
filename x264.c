@@ -936,6 +936,7 @@ static void help( x264_param_t *defaults, int longhelp )
     H1( "      --index <string>        Filename for input index file\n" );
     H0( "      --sar width:height      Specify Sample Aspect Ratio\n" );
     H0( "      --no-info               Don't write information about settings used in encode\n" );
+	H0( "      --exp                   Turn on experimental features\n" );
     H0( "      --fps <float|rational>  Specify framerate\n" );
     H0( "      --seek <integer>        First frame to encode\n" );
     H0( "      --frames <integer>      Maximum number of frames to encode\n" );
@@ -1096,7 +1097,6 @@ static struct option long_options[] =
     { "no-weightb",           no_argument,       NULL, 0 },
     { "weightp",              required_argument, NULL, 0 },
     { "me",                   required_argument, NULL, 0 },
-    { "dex",                  no_argument,       NULL, 0 },
     { "no-dex",               no_argument,       NULL, 0 },
     { "merange",              required_argument, NULL, 0 },
     { "mvrange",              required_argument, NULL, 0 },
@@ -1131,6 +1131,7 @@ static struct option long_options[] =
     { "stats",                required_argument, NULL, 0 },
     { "qcomp",                required_argument, NULL, 0 },
     { "mbtree",               no_argument,       NULL, 0 },
+    { "mbtree-strength",      required_argument, NULL, 0 },
     { "no-mbtree",            no_argument,       NULL, 0 },
     { "qblur",                required_argument, NULL, 0 },
     { "cplxblur",             required_argument, NULL, 0 },
@@ -1178,8 +1179,8 @@ static struct option long_options[] =
     { "transfer",             required_argument, NULL, 0 },
     { "colormatrix",          required_argument, NULL, 0 },
     { "chromaloc",            required_argument, NULL, 0 },
-    { "info",                 no_argument,       NULL, 0 },
     { "no-info",              no_argument,       NULL, 0 },
+    { "exp",                  no_argument,       NULL, 0 },
     { "force-cfr",            no_argument,       NULL, 0 },
     { "tcfile-in",            required_argument, NULL, OPT_TCFILE_IN },
     { "tcfile-out",           required_argument, NULL, OPT_TCFILE_OUT },

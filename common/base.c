@@ -6,6 +6,7 @@
  * Authors: Loren Merritt <lorenm@u.washington.edu>
  *          Laurent Aimar <fenrir@via.ecp.fr>
  *			oofer_dww
+ *          porcino
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -461,6 +462,9 @@ REALIGN_STACK void x264_param_default( x264_param_t *param )
     param->analyse.i_luma_deadzone[1] = 11;
     param->analyse.b_psnr = 0;
     param->analyse.b_ssim = 0;
+	param->i_exp = 0;
+	
+	param->rc.f_mb_tree_strength = 0.4;
 
     param->i_cqm_preset = X264_CQM_FLAT;
     memset( param->cqm_4iy, 16, sizeof( param->cqm_4iy ) );
@@ -1021,6 +1025,8 @@ REALIGN_STACK int x264_param_parse( x264_param_t *p, const char *name, const cha
     }
     OPT("info")
         p->i_info = atobool(value);
+	OPT("exp")
+		p->i_exp = atobool(value);
     OPT("mastering-display")
     {
         if( strcasecmp( value, "undef" ) )
@@ -1369,6 +1375,9 @@ REALIGN_STACK int x264_param_parse( x264_param_t *p, const char *name, const cha
         p->rc.f_qcompress = atof(value);
     OPT("mbtree")
         p->rc.b_mb_tree = atobool(value);
+/* exp feature */
+	OPT("mbtree-strength")
+        p->rc.f_mb_tree_strength = atof(value);
     OPT("qblur")
         p->rc.f_qblur = atof(value);
     OPT2("cplxblur", "cplx-blur")
@@ -1455,6 +1464,7 @@ char *x264_param2string( x264_param_t *p, int b_res )
         s += sprintf( s, "opencl=%d ", p->b_opencl );
     s += sprintf( s, "cabac=%d", p->b_cabac );
     s += sprintf( s, " info=%d", p->i_info );
+	s += sprintf( s, " exp=%d", p->i_exp );
     s += sprintf( s, " ref=%d", p->i_frame_reference );
     s += sprintf( s, " deblock=%d:%d:%d", p->b_deblocking_filter,
                   p->i_deblocking_filter_alphac0, p->i_deblocking_filter_beta );
@@ -1521,6 +1531,10 @@ char *x264_param2string( x264_param_t *p, int b_res )
     s += sprintf( s, " rc=%s mbtree=%d", p->rc.i_rc_method == X264_RC_ABR ?
                                ( p->rc.b_stat_read ? "2pass" : p->rc.i_vbv_max_bitrate == p->rc.i_bitrate ? "cbr" : "abr" )
                                : p->rc.i_rc_method == X264_RC_CRF ? "crf" : "cqp", p->rc.b_mb_tree );
+    if( p->i_exp && p->rc.b_mb_tree )
+	{
+    s += sprintf( s, " mbtree-strength=%.2f", p->rc.f_mb_tree_strength );
+    }
     if( p->rc.i_rc_method == X264_RC_ABR || p->rc.i_rc_method == X264_RC_CRF )
     {
         if( p->rc.i_rc_method == X264_RC_CRF )
