@@ -5,7 +5,7 @@
  *
  * Authors: Loren Merritt <lorenm@u.washington.edu>
  *          Laurent Aimar <fenrir@via.ecp.fr>
- *			oofer_dww
+ *          oofer_dww
  *          porcino
  *
  * This program is free software; you can redistribute it and/or modify
@@ -409,7 +409,7 @@ REALIGN_STACK void x264_param_default( x264_param_t *param )
     param->rc.i_vbv_buffer_size = 0;
     param->rc.f_vbv_buffer_init = 0.9;
     param->rc.i_qp_constant = -1;
-    param->rc.f_rf_constant = 23;
+    param->rc.f_rf_constant = 18;
     param->rc.i_qp_min = 0;
     param->rc.i_qp_max = INT_MAX;
     param->rc.i_qp_step = 4;
@@ -418,7 +418,7 @@ REALIGN_STACK void x264_param_default( x264_param_t *param )
     param->rc.i_aq_mode = X264_AQ_VARIANCE;
     param->rc.f_aq_strength = 0.8;
     param->b_open_gop = 1;
-    param->rc.i_lookahead = 120;
+    param->rc.i_lookahead = 140;
 
     param->rc.b_stat_write = 0;
     param->rc.psz_stat_out = "x264_2pass.log";
@@ -462,9 +462,9 @@ REALIGN_STACK void x264_param_default( x264_param_t *param )
     param->analyse.i_luma_deadzone[1] = 11;
     param->analyse.b_psnr = 0;
     param->analyse.b_ssim = 0;
-	param->i_exp = 0;
+    param->i_exp = 0;
 	
-	param->rc.f_mb_tree_strength = 0.4;
+    param->rc.f_mb_tree_strength = 0.4;
 
     param->i_cqm_preset = X264_CQM_FLAT;
     memset( param->cqm_4iy, 16, sizeof( param->cqm_4iy ) );
